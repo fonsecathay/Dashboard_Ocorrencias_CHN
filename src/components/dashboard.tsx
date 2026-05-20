@@ -226,10 +226,24 @@ function VisaoGeral({ ano }: { ano: number }) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPI title="Quase-Falha (último mês)" value={ultimoQF?.percentual != null ? `${(ultimoQF.percentual*100).toFixed(2)}%` : "—"} hint={ultimoQF ? `${ultimoQF.mes} · meta ≥ ${meta}%` : "sem dados"} icon={TrendingUp} tone={ultimoQF && ultimoQF.percentual! >= state.metaQuaseFalha ? "good" : "bad"} />
         <KPI title="Meses preenchidos (QF)" value={`${qfAno.filter(q => q.percentual != null).length}/12`} icon={CheckCircle2} tone="good" />
-        {porPublico.slice(0, 2).map((p) => (
-          <KPI key={p.name} title={`Ocorrências · ${p.name}`} value={String(p.value)} hint={total ? `${((p.value/total)*100).toFixed(1)}% do total` : "—"} icon={Users} />
-        ))}
+        <KPI title="Média de registros / dia" value={mediaDia} hint={`${diasComRegistro} dia(s) com ocorrência`} icon={TrendingUp} />
+        <KPI title="Dia com mais ocorrências" value={diaPico ? diaPico.label : "—"} hint={diaPico ? `${diaPico.total} registro(s)` : "sem dados"} icon={AlertTriangle} tone="bad" />
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>Registros por dia</CardTitle><CardDescription>Evolução diária — {ano}</CardDescription></CardHeader>
+        <CardContent className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={porDia}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Bar dataKey="total" fill={PALETTE[2]} radius={[6,6,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
