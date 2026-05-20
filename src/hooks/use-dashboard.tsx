@@ -4,6 +4,7 @@ import { loadState, saveState, type AppState, type TDNEntry, type QuaseFalhaEntr
 interface Ctx {
   state: AppState;
   addTDN: (e: Omit<TDNEntry, "id">) => void;
+  addManyTDN: (entries: Omit<TDNEntry, "id">[]) => void;
   removeTDN: (id: string) => void;
   updateQF: (mes: string, ano: number, patch: Partial<QuaseFalhaEntry>) => void;
   setMeta: (m: number) => void;
