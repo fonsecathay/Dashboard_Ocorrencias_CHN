@@ -162,9 +162,11 @@ function KPI({ title, value, hint, icon: Icon, tone = "default" }: { title: stri
   );
 }
 
-function VisaoGeral({ ano }: { ano: number }) {
+function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
   const { state } = useDashboard();
   const tdnAno = state.tdn.filter((t) => new Date(t.data).getFullYear() === ano);
+  const tdnFiltro = mes == null ? tdnAno : tdnAno.filter((t) => new Date(t.data).getMonth() === mes);
+  const periodoLabel = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
 
   const porMes = useMemo(() => {
     const acc = MESES.map((m, i) => ({ mes: m.slice(0,3), idx: i, total: 0 }));
@@ -174,27 +176,27 @@ function VisaoGeral({ ano }: { ano: number }) {
 
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>();
-    tdnAno.forEach((t) => map.set(t.categoria, (map.get(t.categoria) ?? 0) + 1));
+    tdnFiltro.forEach((t) => map.set(t.categoria, (map.get(t.categoria) ?? 0) + 1));
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
-  }, [tdnAno]);
+  }, [tdnFiltro]);
 
   const qfAno = state.quaseFalha.filter((q) => q.ano === ano);
   const qfChart = qfAno.map((q) => ({ mes: q.mes.slice(0,3), valor: q.percentual != null ? +(q.percentual * 100).toFixed(2) : null }));
   const ultimoQF = [...qfAno].reverse().find((q) => q.percentual != null);
   const meta = state.metaQuaseFalha * 100;
 
-  const atrasos = tdnAno.filter((t) => t.categoria === "Atraso").length;
-  const total = tdnAno.length;
+  const atrasos = tdnFiltro.filter((t) => t.categoria === "Atraso").length;
+  const total = tdnFiltro.length;
 
   const porPublico = useMemo(() => {
     const map = new Map<string, number>();
-    tdnAno.forEach((t) => map.set(t.publico, (map.get(t.publico) ?? 0) + 1));
+    tdnFiltro.forEach((t) => map.set(t.publico, (map.get(t.publico) ?? 0) + 1));
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
-  }, [tdnAno]);
+  }, [tdnFiltro]);
 
   const porUnidade = useMemo(() => {
     const map = new Map<string, number>();
-    tdnAno.forEach((t) => {
+    tdnFiltro.forEach((t) => {
       const key = t.unidade && t.unidade !== "-" ? `Unidade ${t.unidade}` : "Sem unidade";
       map.set(key, (map.get(key) ?? 0) + 1);
     });
