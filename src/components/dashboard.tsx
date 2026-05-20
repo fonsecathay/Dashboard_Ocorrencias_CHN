@@ -32,6 +32,7 @@ const PALETTE = ["#5B2A86","#7B3FA0","#A56EBE","#3FA34D","#4B3F72","#C094D6","#2
 export function Dashboard() {
   const { state, importJSON, reset, addManyTDN } = useDashboard();
   const [anoSel, setAnoSel] = useState<number>(2026);
+  const [mesSel, setMesSel] = useState<string>("todos");
 
   const anos = useMemo(() => {
     const s = new Set<number>([anoSel, new Date().getFullYear(), 2026]);
