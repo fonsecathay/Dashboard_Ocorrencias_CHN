@@ -23,6 +23,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     state,
     addTDN: (e) =>
       setState((s) => ({ ...s, tdn: [{ ...e, id: crypto.randomUUID() }, ...s.tdn] })),
+    addManyTDN: (entries) =>
+      setState((s) => ({ ...s, tdn: [...entries.map((e) => ({ ...e, id: crypto.randomUUID() })), ...s.tdn] })),
     removeTDN: (id) =>
       setState((s) => ({ ...s, tdn: s.tdn.filter((t) => t.id !== id) })),
     updateQF: (mes, ano, patch) =>
