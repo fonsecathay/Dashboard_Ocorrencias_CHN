@@ -294,7 +294,7 @@ function TDNView({ ano }: { ano: number }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>TDN — Tratativa de Não-Conformidades</CardTitle>
+            <CardTitle>Termo de Notificação</CardTitle>
             <CardDescription>{itens.length} registros em {ano}</CardDescription>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
