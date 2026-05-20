@@ -16,7 +16,7 @@ import {
   LineChart, Line, ReferenceLine, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
-import { Download, Upload, Plus, Trash2, AlertTriangle, CheckCircle2, TrendingUp, Utensils } from "lucide-react";
+import { Download, Upload, Plus, Trash2, AlertTriangle, CheckCircle2, TrendingUp, Clock, Users, Building2 } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
 import { MESES, type Categoria, type MesNome, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
 
@@ -72,7 +72,7 @@ export function Dashboard() {
               <img src={logo} alt="CHN Rede Américas" className="h-10 w-auto" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">Dashboard SND</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Dashboard de Ocorrências</h1>
               <p className="text-sm text-sidebar-foreground/70">Indicadores de Nutrição e Dietética</p>
             </div>
           </div>
@@ -94,7 +94,7 @@ export function Dashboard() {
         <Tabs defaultValue="visao" className="space-y-6">
           <TabsList>
             <TabsTrigger value="visao">Visão Geral</TabsTrigger>
-            <TabsTrigger value="tdn">TDN — Não-Conformidades</TabsTrigger>
+            <TabsTrigger value="tdn">Termo de Notificação</TabsTrigger>
             <TabsTrigger value="qf">Indicador Quase-Falha</TabsTrigger>
             <TabsTrigger value="config">Configurações</TabsTrigger>
           </TabsList>
@@ -158,21 +158,49 @@ function VisaoGeral({ ano }: { ano: number }) {
   const ultimoQF = [...qfAno].reverse().find((q) => q.percentual != null);
   const meta = state.metaQuaseFalha * 100;
 
-  const dietaErrada = tdnAno.filter((t) => t.categoria === "Dieta Errada").length;
+  const atrasos = tdnAno.filter((t) => t.categoria === "Atraso").length;
   const total = tdnAno.length;
+
+  const porPublico = useMemo(() => {
+    const map = new Map<string, number>();
+    tdnAno.forEach((t) => map.set(t.publico, (map.get(t.publico) ?? 0) + 1));
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+  }, [tdnAno]);
+
+  const porUnidade = useMemo(() => {
+    const map = new Map<string, number>();
+    tdnAno.forEach((t) => {
+      const key = t.unidade && t.unidade !== "-" ? `Unidade ${t.unidade}` : "Sem unidade";
+      map.set(key, (map.get(key) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([unidade, total]) => ({ unidade, total }))
+      .sort((a, b) => b.total - a.total);
+  }, [tdnAno]);
+
+  const unidadeTop = porUnidade[0];
+  const publicoTop = [...porPublico].sort((a, b) => b.value - a.value)[0];
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-4">
-        <KPI title="Não-conformidades no ano" value={String(total)} hint={`${tdnAno.filter(t => new Date(t.data).getMonth() === new Date().getMonth()).length} no mês atual`} icon={AlertTriangle} tone="bad" />
-        <KPI title="Dietas erradas" value={String(dietaErrada)} hint={total ? `${((dietaErrada/total)*100).toFixed(1)}% do total` : "—"} icon={Utensils} />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KPI title="Total de ocorrências no ano" value={String(total)} hint={`${tdnAno.filter(t => new Date(t.data).getMonth() === new Date().getMonth()).length} no mês atual`} icon={AlertTriangle} tone="bad" />
+        <KPI title="Atrasos" value={String(atrasos)} hint={total ? `${((atrasos/total)*100).toFixed(1)}% do total` : "—"} icon={Clock} tone="bad" />
+        <KPI title="Público mais afetado" value={publicoTop?.name ?? "—"} hint={publicoTop ? `${publicoTop.value} ocorrências` : "sem dados"} icon={Users} />
+        <KPI title="Unidade com mais ocorrências" value={unidadeTop?.unidade.replace("Unidade ","Un. ") ?? "—"} hint={unidadeTop ? `${unidadeTop.total} ocorrências` : "sem dados"} icon={Building2} tone="bad" />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPI title="Quase-Falha (último mês)" value={ultimoQF?.percentual != null ? `${(ultimoQF.percentual*100).toFixed(2)}%` : "—"} hint={ultimoQF ? `${ultimoQF.mes} · meta ≥ ${meta}%` : "sem dados"} icon={TrendingUp} tone={ultimoQF && ultimoQF.percentual! >= state.metaQuaseFalha ? "good" : "bad"} />
         <KPI title="Meses preenchidos (QF)" value={`${qfAno.filter(q => q.percentual != null).length}/12`} icon={CheckCircle2} tone="good" />
+        {porPublico.slice(0, 2).map((p) => (
+          <KPI key={p.name} title={`Ocorrências · ${p.name}`} value={String(p.value)} hint={total ? `${((p.value/total)*100).toFixed(1)}% do total` : "—"} icon={Users} />
+        ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Não-conformidades por mês</CardTitle><CardDescription>{ano}</CardDescription></CardHeader>
+          <CardHeader><CardTitle>Total de ocorrências por mês</CardTitle><CardDescription>{ano}</CardDescription></CardHeader>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={porMes}>
@@ -193,6 +221,35 @@ function VisaoGeral({ ano }: { ano: number }) {
               <PieChart>
                 <Pie data={porCategoria} dataKey="value" nameKey="name" outerRadius={90} label={(d) => `${d.name}: ${d.value}`}>
                   {porCategoria.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                </Pie>
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Ocorrências por unidade</CardTitle><CardDescription>Ranking — {ano}</CardDescription></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={porUnidade} layout="vertical" margin={{ left: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                <YAxis type="category" dataKey="unidade" width={100} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="total" fill={PALETTE[1]} radius={[0,6,6,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Público-alvo afetado</CardTitle><CardDescription>Distribuição de impacto</CardDescription></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={porPublico} dataKey="value" nameKey="name" outerRadius={90} label={(d) => `${d.name}: ${d.value}`}>
+                  {porPublico.map((_, i) => <Cell key={i} fill={PALETTE[(i+2) % PALETTE.length]} />)}
                 </Pie>
                 <Legend />
               </PieChart>
@@ -237,7 +294,7 @@ function TDNView({ ano }: { ano: number }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>TDN — Tratativa de Não-Conformidades</CardTitle>
+            <CardTitle>Termo de Notificação</CardTitle>
             <CardDescription>{itens.length} registros em {ano}</CardDescription>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -306,7 +363,7 @@ function NovoTDNDialog({ onSave }: { onSave: (e: any) => void }) {
   });
   return (
     <DialogContent className="max-w-lg">
-      <DialogHeader><DialogTitle>Novo registro de não-conformidade</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>Novo Termo de Notificação</DialogTitle></DialogHeader>
       <div className="grid gap-3 py-2">
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Data</Label><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></div>
