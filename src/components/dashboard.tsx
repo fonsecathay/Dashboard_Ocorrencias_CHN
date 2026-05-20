@@ -32,6 +32,7 @@ const PALETTE = ["#5B2A86","#7B3FA0","#A56EBE","#3FA34D","#4B3F72","#C094D6","#2
 export function Dashboard() {
   const { state, importJSON, reset, addManyTDN } = useDashboard();
   const [anoSel, setAnoSel] = useState<number>(2026);
+  const [mesSel, setMesSel] = useState<string>("todos");
 
   const anos = useMemo(() => {
     const s = new Set<number>([anoSel, new Date().getFullYear(), 2026]);
@@ -94,6 +95,13 @@ export function Dashboard() {
               <SelectTrigger className="w-28 bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
               <SelectContent>{anos.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}</SelectContent>
             </Select>
+            <Select value={mesSel} onValueChange={setMesSel}>
+              <SelectTrigger className="w-36 bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Ano inteiro</SelectItem>
+                {MESES.map((m, i) => <SelectItem key={m} value={String(i)}>{m.charAt(0) + m.slice(1).toLowerCase()}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Button variant="secondary" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar</Button>
             <label>
               <input type="file" accept=".ods,.xlsx,.xls,.csv,application/vnd.oasis.opendocument.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importarPlanilha(f); e.target.value = ""; }} />
@@ -116,8 +124,8 @@ export function Dashboard() {
             <TabsTrigger value="config">Configurações</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="visao"><VisaoGeral ano={anoSel} /></TabsContent>
-          <TabsContent value="tdn"><TDNView ano={anoSel} /></TabsContent>
+          <TabsContent value="visao"><VisaoGeral ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} /></TabsContent>
+          <TabsContent value="tdn"><TDNView ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} /></TabsContent>
           <TabsContent value="qf"><QFView ano={anoSel} /></TabsContent>
           <TabsContent value="config">
             <Card>
@@ -154,9 +162,11 @@ function KPI({ title, value, hint, icon: Icon, tone = "default" }: { title: stri
   );
 }
 
-function VisaoGeral({ ano }: { ano: number }) {
+function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
   const { state } = useDashboard();
   const tdnAno = state.tdn.filter((t) => new Date(t.data).getFullYear() === ano);
+  const tdnFiltro = mes == null ? tdnAno : tdnAno.filter((t) => new Date(t.data).getMonth() === mes);
+  const periodoLabel = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
 
   const porMes = useMemo(() => {
     const acc = MESES.map((m, i) => ({ mes: m.slice(0,3), idx: i, total: 0 }));
@@ -166,41 +176,41 @@ function VisaoGeral({ ano }: { ano: number }) {
 
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>();
-    tdnAno.forEach((t) => map.set(t.categoria, (map.get(t.categoria) ?? 0) + 1));
+    tdnFiltro.forEach((t) => map.set(t.categoria, (map.get(t.categoria) ?? 0) + 1));
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
-  }, [tdnAno]);
+  }, [tdnFiltro]);
 
   const qfAno = state.quaseFalha.filter((q) => q.ano === ano);
   const qfChart = qfAno.map((q) => ({ mes: q.mes.slice(0,3), valor: q.percentual != null ? +(q.percentual * 100).toFixed(2) : null }));
   const ultimoQF = [...qfAno].reverse().find((q) => q.percentual != null);
   const meta = state.metaQuaseFalha * 100;
 
-  const atrasos = tdnAno.filter((t) => t.categoria === "Atraso").length;
-  const total = tdnAno.length;
+  const atrasos = tdnFiltro.filter((t) => t.categoria === "Atraso").length;
+  const total = tdnFiltro.length;
 
   const porPublico = useMemo(() => {
     const map = new Map<string, number>();
-    tdnAno.forEach((t) => map.set(t.publico, (map.get(t.publico) ?? 0) + 1));
+    tdnFiltro.forEach((t) => map.set(t.publico, (map.get(t.publico) ?? 0) + 1));
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
-  }, [tdnAno]);
+  }, [tdnFiltro]);
 
   const porUnidade = useMemo(() => {
     const map = new Map<string, number>();
-    tdnAno.forEach((t) => {
+    tdnFiltro.forEach((t) => {
       const key = t.unidade && t.unidade !== "-" ? `Unidade ${t.unidade}` : "Sem unidade";
       map.set(key, (map.get(key) ?? 0) + 1);
     });
     return Array.from(map.entries())
       .map(([unidade, total]) => ({ unidade, total }))
       .sort((a, b) => b.total - a.total);
-  }, [tdnAno]);
+  }, [tdnFiltro]);
 
   const unidadeTop = porUnidade[0];
   const publicoTop = [...porPublico].sort((a, b) => b.value - a.value)[0];
 
   const porDia = useMemo(() => {
     const map = new Map<string, number>();
-    tdnAno.forEach((t) => map.set(t.data, (map.get(t.data) ?? 0) + 1));
+    tdnFiltro.forEach((t) => map.set(t.data, (map.get(t.data) ?? 0) + 1));
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([data, total]) => ({
@@ -208,16 +218,16 @@ function VisaoGeral({ ano }: { ano: number }) {
         label: new Date(data + "T00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
         total,
       }));
-  }, [tdnAno]);
+  }, [tdnFiltro]);
 
   const diasComRegistro = porDia.length;
-  const mediaDia = diasComRegistro ? (tdnAno.length / diasComRegistro).toFixed(1) : "0";
+  const mediaDia = diasComRegistro ? (tdnFiltro.length / diasComRegistro).toFixed(1) : "0";
   const diaPico = porDia.reduce((a, b) => (b.total > (a?.total ?? 0) ? b : a), porDia[0]);
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPI title="Total de ocorrências no ano" value={String(total)} hint={`${tdnAno.filter(t => new Date(t.data).getMonth() === new Date().getMonth()).length} no mês atual`} icon={AlertTriangle} tone="bad" />
+        <KPI title={mes == null ? "Total de ocorrências no ano" : "Total de ocorrências no mês"} value={String(total)} hint={periodoLabel} icon={AlertTriangle} tone="bad" />
         <KPI title="Atrasos" value={String(atrasos)} hint={total ? `${((atrasos/total)*100).toFixed(1)}% do total` : "—"} icon={Clock} tone="bad" />
         <KPI title="Público mais afetado" value={publicoTop?.name ?? "—"} hint={publicoTop ? `${publicoTop.value} ocorrências` : "sem dados"} icon={Users} />
         <KPI title="Unidade com mais ocorrências" value={unidadeTop?.unidade.replace("Unidade ","Un. ") ?? "—"} hint={unidadeTop ? `${unidadeTop.total} ocorrências` : "sem dados"} icon={Building2} tone="bad" />
@@ -324,7 +334,7 @@ function VisaoGeral({ ano }: { ano: number }) {
   );
 }
 
-function TDNView({ ano }: { ano: number }) {
+function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
   const { state, addTDN, removeTDN } = useDashboard();
   const [open, setOpen] = useState(false);
   const [filtroCat, setFiltroCat] = useState<string>("todas");
@@ -332,9 +342,12 @@ function TDNView({ ano }: { ano: number }) {
 
   const itens = state.tdn
     .filter((t) => new Date(t.data).getFullYear() === ano)
+    .filter((t) => mes == null || new Date(t.data).getMonth() === mes)
     .filter((t) => filtroCat === "todas" || t.categoria === filtroCat)
     .filter((t) => !busca || t.descricao.toLowerCase().includes(busca.toLowerCase()) || t.localizacao.toLowerCase().includes(busca.toLowerCase()))
     .sort((a, b) => b.data.localeCompare(a.data));
+
+  const periodo = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
 
   return (
     <div className="space-y-4">
@@ -342,7 +355,7 @@ function TDNView({ ano }: { ano: number }) {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Termo de Notificação</CardTitle>
-            <CardDescription>{itens.length} registros em {ano}</CardDescription>
+            <CardDescription>{itens.length} registros em {periodo}</CardDescription>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />Novo registro</Button></DialogTrigger>
