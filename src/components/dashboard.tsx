@@ -94,7 +94,7 @@ export function Dashboard() {
         <Tabs defaultValue="visao" className="space-y-6">
           <TabsList>
             <TabsTrigger value="visao">Visão Geral</TabsTrigger>
-            <TabsTrigger value="tdn">TDN — Não-Conformidades</TabsTrigger>
+            <TabsTrigger value="tdn">Termo de Notificação</TabsTrigger>
             <TabsTrigger value="qf">Indicador Quase-Falha</TabsTrigger>
             <TabsTrigger value="config">Configurações</TabsTrigger>
           </TabsList>
