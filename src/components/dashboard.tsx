@@ -96,8 +96,12 @@ export function Dashboard() {
             </Select>
             <Button variant="secondary" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar</Button>
             <label>
+              <input type="file" accept=".ods,.xlsx,.xls,.csv,application/vnd.oasis.opendocument.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importarPlanilha(f); e.target.value = ""; }} />
+              <Button variant="secondary" size="sm" asChild><span><FileSpreadsheet className="h-4 w-4 mr-1" />Importar planilha</span></Button>
+            </label>
+            <label>
               <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importar(e.target.files[0])} />
-              <Button variant="secondary" size="sm" asChild><span><Upload className="h-4 w-4 mr-1" />Importar</span></Button>
+              <Button variant="secondary" size="sm" asChild><span><Upload className="h-4 w-4 mr-1" />Importar JSON</span></Button>
             </label>
           </div>
         </div>
