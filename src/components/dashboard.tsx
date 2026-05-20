@@ -63,6 +63,18 @@ export function Dashboard() {
     };
     reader.readAsText(file);
   };
+  const importarPlanilha = async (file: File) => {
+    try {
+      const entries = await parseSpreadsheet(file);
+      if (!entries.length) { toast.error("Nenhum registro encontrado na planilha"); return; }
+      addManyTDN(entries);
+      toast.success(`${entries.length} registros importados da planilha`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Falha ao ler a planilha");
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
