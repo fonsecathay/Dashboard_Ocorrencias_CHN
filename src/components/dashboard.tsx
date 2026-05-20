@@ -203,14 +203,14 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
     return Array.from(map.entries())
       .map(([unidade, total]) => ({ unidade, total }))
       .sort((a, b) => b.total - a.total);
-  }, [tdnAno]);
+  }, [tdnFiltro]);
 
   const unidadeTop = porUnidade[0];
   const publicoTop = [...porPublico].sort((a, b) => b.value - a.value)[0];
 
   const porDia = useMemo(() => {
     const map = new Map<string, number>();
-    tdnAno.forEach((t) => map.set(t.data, (map.get(t.data) ?? 0) + 1));
+    tdnFiltro.forEach((t) => map.set(t.data, (map.get(t.data) ?? 0) + 1));
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([data, total]) => ({
@@ -218,16 +218,16 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
         label: new Date(data + "T00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
         total,
       }));
-  }, [tdnAno]);
+  }, [tdnFiltro]);
 
   const diasComRegistro = porDia.length;
-  const mediaDia = diasComRegistro ? (tdnAno.length / diasComRegistro).toFixed(1) : "0";
+  const mediaDia = diasComRegistro ? (tdnFiltro.length / diasComRegistro).toFixed(1) : "0";
   const diaPico = porDia.reduce((a, b) => (b.total > (a?.total ?? 0) ? b : a), porDia[0]);
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPI title="Total de ocorrências no ano" value={String(total)} hint={`${tdnAno.filter(t => new Date(t.data).getMonth() === new Date().getMonth()).length} no mês atual`} icon={AlertTriangle} tone="bad" />
+        <KPI title={mes == null ? "Total de ocorrências no ano" : "Total de ocorrências no mês"} value={String(total)} hint={periodoLabel} icon={AlertTriangle} tone="bad" />
         <KPI title="Atrasos" value={String(atrasos)} hint={total ? `${((atrasos/total)*100).toFixed(1)}% do total` : "—"} icon={Clock} tone="bad" />
         <KPI title="Público mais afetado" value={publicoTop?.name ?? "—"} hint={publicoTop ? `${publicoTop.value} ocorrências` : "sem dados"} icon={Users} />
         <KPI title="Unidade com mais ocorrências" value={unidadeTop?.unidade.replace("Unidade ","Un. ") ?? "—"} hint={unidadeTop ? `${unidadeTop.total} ocorrências` : "sem dados"} icon={Building2} tone="bad" />
