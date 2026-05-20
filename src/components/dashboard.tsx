@@ -16,9 +16,10 @@ import {
   LineChart, Line, ReferenceLine, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
-import { Download, Upload, Plus, Trash2, AlertTriangle, CheckCircle2, TrendingUp, Clock, Users, Building2 } from "lucide-react";
+import { Download, Upload, Plus, Trash2, AlertTriangle, CheckCircle2, TrendingUp, Clock, Users, Building2, FileSpreadsheet } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
 import { MESES, type Categoria, type MesNome, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
+import { parseSpreadsheet } from "@/lib/spreadsheet-import";
 
 const CATEGORIAS: Categoria[] = ["Qualidade","Falta de item","Dieta Errada","Atraso","Higiene","Temperatura","Outros"];
 const REFEICOES: Refeicao[] = ["Desjejum","Colação","Almoço","Lanche","Jantar","Ceia"];
