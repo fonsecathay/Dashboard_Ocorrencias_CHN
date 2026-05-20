@@ -334,7 +334,7 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
   );
 }
 
-function TDNView({ ano }: { ano: number }) {
+function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
   const { state, addTDN, removeTDN } = useDashboard();
   const [open, setOpen] = useState(false);
   const [filtroCat, setFiltroCat] = useState<string>("todas");
@@ -342,9 +342,12 @@ function TDNView({ ano }: { ano: number }) {
 
   const itens = state.tdn
     .filter((t) => new Date(t.data).getFullYear() === ano)
+    .filter((t) => mes == null || new Date(t.data).getMonth() === mes)
     .filter((t) => filtroCat === "todas" || t.categoria === filtroCat)
     .filter((t) => !busca || t.descricao.toLowerCase().includes(busca.toLowerCase()) || t.localizacao.toLowerCase().includes(busca.toLowerCase()))
     .sort((a, b) => b.data.localeCompare(a.data));
+
+  const periodo = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
 
   return (
     <div className="space-y-4">
@@ -352,7 +355,7 @@ function TDNView({ ano }: { ano: number }) {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Termo de Notificação</CardTitle>
-            <CardDescription>{itens.length} registros em {ano}</CardDescription>
+            <CardDescription>{itens.length} registros em {periodo}</CardDescription>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />Novo registro</Button></DialogTrigger>
