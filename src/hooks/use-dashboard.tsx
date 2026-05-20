@@ -4,6 +4,7 @@ import { loadState, saveState, type AppState, type TDNEntry, type QuaseFalhaEntr
 interface Ctx {
   state: AppState;
   addTDN: (e: Omit<TDNEntry, "id">) => void;
+  addManyTDN: (entries: Omit<TDNEntry, "id">[]) => void;
   removeTDN: (id: string) => void;
   updateQF: (mes: string, ano: number, patch: Partial<QuaseFalhaEntry>) => void;
   setMeta: (m: number) => void;
@@ -22,6 +23,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     state,
     addTDN: (e) =>
       setState((s) => ({ ...s, tdn: [{ ...e, id: crypto.randomUUID() }, ...s.tdn] })),
+    addManyTDN: (entries) =>
+      setState((s) => ({ ...s, tdn: [...entries.map((e) => ({ ...e, id: crypto.randomUUID() })), ...s.tdn] })),
     removeTDN: (id) =>
       setState((s) => ({ ...s, tdn: s.tdn.filter((t) => t.id !== id) })),
     updateQF: (mes, ano, patch) =>
