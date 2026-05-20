@@ -72,7 +72,7 @@ export function Dashboard() {
               <img src={logo} alt="CHN Rede Américas" className="h-10 w-auto" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">Dashboard SND</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Dashboard de Ocorrências</h1>
               <p className="text-sm text-sidebar-foreground/70">Indicadores de Nutrição e Dietética</p>
             </div>
           </div>
