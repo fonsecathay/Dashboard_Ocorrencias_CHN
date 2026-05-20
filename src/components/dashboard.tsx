@@ -95,6 +95,13 @@ export function Dashboard() {
               <SelectTrigger className="w-28 bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
               <SelectContent>{anos.map((a) => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}</SelectContent>
             </Select>
+            <Select value={mesSel} onValueChange={setMesSel}>
+              <SelectTrigger className="w-36 bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Ano inteiro</SelectItem>
+                {MESES.map((m, i) => <SelectItem key={m} value={String(i)}>{m.charAt(0) + m.slice(1).toLowerCase()}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Button variant="secondary" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar</Button>
             <label>
               <input type="file" accept=".ods,.xlsx,.xls,.csv,application/vnd.oasis.opendocument.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importarPlanilha(f); e.target.value = ""; }} />
