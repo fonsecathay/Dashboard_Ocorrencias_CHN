@@ -198,6 +198,22 @@ function VisaoGeral({ ano }: { ano: number }) {
   const unidadeTop = porUnidade[0];
   const publicoTop = [...porPublico].sort((a, b) => b.value - a.value)[0];
 
+  const porDia = useMemo(() => {
+    const map = new Map<string, number>();
+    tdnAno.forEach((t) => map.set(t.data, (map.get(t.data) ?? 0) + 1));
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([data, total]) => ({
+        data,
+        label: new Date(data + "T00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        total,
+      }));
+  }, [tdnAno]);
+
+  const diasComRegistro = porDia.length;
+  const mediaDia = diasComRegistro ? (tdnAno.length / diasComRegistro).toFixed(1) : "0";
+  const diaPico = porDia.reduce((a, b) => (b.total > (a?.total ?? 0) ? b : a), porDia[0]);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
