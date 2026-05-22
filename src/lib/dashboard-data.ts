@@ -12,7 +12,7 @@ export type Categoria =
 
 export type Refeicao =
   | "Desjejum"
-  | "Colação"
+  | "Avulso"
   | "Almoço"
   | "Lanche"
   | "Jantar"
