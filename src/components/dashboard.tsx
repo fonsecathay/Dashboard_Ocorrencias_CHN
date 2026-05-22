@@ -16,7 +16,7 @@ import {
   LineChart, Line, ReferenceLine, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
-import { Download, Upload, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet } from "lucide-react";
+import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
 import { MESES, type Categoria, type MesNome, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
@@ -30,7 +30,7 @@ const COLORS = ["hsl(var(--chart-1))","hsl(var(--chart-2))","hsl(var(--chart-3))
 const PALETTE = ["#5B2A86","#7B3FA0","#A56EBE","#3FA34D","#4B3F72","#C094D6","#2A1A4A"];
 
 export function Dashboard() {
-  const { state, importJSON, reset, addManyTDN } = useDashboard();
+  const { state, reset, addManyTDN } = useDashboard();
   const [anoSel, setAnoSel] = useState<number>(2026);
   const [mesSel, setMesSel] = useState<string>("todos");
 
@@ -52,18 +52,6 @@ export function Dashboard() {
     toast.success("Backup exportado");
   };
 
-  const importar = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        importJSON(JSON.parse(String(reader.result)));
-        toast.success("Dados importados");
-      } catch {
-        toast.error("Arquivo inválido");
-      }
-    };
-    reader.readAsText(file);
-  };
   const importarPlanilha = async (file: File) => {
     try {
       const entries = await parseSpreadsheet(file);
@@ -106,10 +94,6 @@ export function Dashboard() {
             <label>
               <input type="file" accept=".ods,.xlsx,.xls,.csv,application/vnd.oasis.opendocument.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importarPlanilha(f); e.target.value = ""; }} />
               <Button variant="secondary" size="sm" asChild><span><FileSpreadsheet className="h-4 w-4 mr-1" />Importar planilha</span></Button>
-            </label>
-            <label>
-              <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importar(e.target.files[0])} />
-              <Button variant="secondary" size="sm" asChild><span><Upload className="h-4 w-4 mr-1" />Importar JSON</span></Button>
             </label>
           </div>
         </div>
