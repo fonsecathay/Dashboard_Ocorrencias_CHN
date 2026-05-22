@@ -30,7 +30,7 @@ const COLORS = ["hsl(var(--chart-1))","hsl(var(--chart-2))","hsl(var(--chart-3))
 const PALETTE = ["#5B2A86","#7B3FA0","#A56EBE","#3FA34D","#4B3F72","#C094D6","#2A1A4A"];
 
 export function Dashboard() {
-  const { state, importJSON, reset, addManyTDN } = useDashboard();
+  const { state, reset, addManyTDN } = useDashboard();
   const [anoSel, setAnoSel] = useState<number>(2026);
   const [mesSel, setMesSel] = useState<string>("todos");
 
