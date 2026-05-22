@@ -52,18 +52,6 @@ export function Dashboard() {
     toast.success("Backup exportado");
   };
 
-  const importar = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        importJSON(JSON.parse(String(reader.result)));
-        toast.success("Dados importados");
-      } catch {
-        toast.error("Arquivo inválido");
-      }
-    };
-    reader.readAsText(file);
-  };
   const importarPlanilha = async (file: File) => {
     try {
       const entries = await parseSpreadsheet(file);
