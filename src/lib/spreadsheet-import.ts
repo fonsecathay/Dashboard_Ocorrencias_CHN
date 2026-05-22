@@ -2,7 +2,7 @@ import * as XLSX from "xlsx";
 import type { Categoria, PublicoAlvo, Refeicao, TDNEntry, Unidade } from "./dashboard-data";
 
 const CATS: Categoria[] = ["Qualidade","Falta de item","Dieta Errada","Atraso","Higiene","Temperatura","Outros"];
-const REFS: Refeicao[] = ["Desjejum","Colação","Almoço","Lanche","Jantar","Ceia"];
+const REFS: Refeicao[] = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia"];
 const PUBS: PublicoAlvo[] = ["Paciente","Acompanhante","Colaborador"];
 const UNIS: Unidade[] = ["I","II","III","IV","V","-"];
 

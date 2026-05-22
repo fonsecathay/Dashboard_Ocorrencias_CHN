@@ -22,7 +22,7 @@ import { MESES, type Categoria, type MesNome, type PublicoAlvo, type Refeicao, t
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
 
 const CATEGORIAS: Categoria[] = ["Qualidade","Falta de item","Dieta Errada","Atraso","Higiene","Temperatura","Outros"];
-const REFEICOES: Refeicao[] = ["Desjejum","Colação","Almoço","Lanche","Jantar","Ceia"];
+const REFEICOES: Refeicao[] = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia"];
 const PUBLICOS: PublicoAlvo[] = ["Paciente","Acompanhante","Colaborador"];
 const UNIDADES: Unidade[] = ["I","II","III","IV","V","-"];
 
