@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,16 +18,15 @@ import {
 import { toast } from "sonner";
 import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
-import { MESES, type Categoria, type MesNome, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
+import { MESES, type Categoria, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
 
-const CATEGORIAS: Categoria[] = ["Qualidade","Falta de item","Dieta Errada","Atraso","Higiene","Temperatura","Outros"];
-const REFEICOES: Refeicao[] = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia"];
-const PUBLICOS: PublicoAlvo[] = ["Paciente","Acompanhante","Colaborador"];
-const UNIDADES: Unidade[] = ["I","II","III","IV","V","-"];
+const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "Atraso", "Higiene", "Temperatura", "Outros"];
+const REFEICOES: Refeicao[] = ["Desjejum", "Avulso", "Almoço", "Lanche", "Jantar", "Ceia"];
+const PUBLICOS: PublicoAlvo[] = ["Paciente", "Acompanhante", "Colaborador"];
+const UNIDADES: Unidade[] = ["I", "II", "III", "IV", "V", "-"];
 
-const COLORS = ["hsl(var(--chart-1))","hsl(var(--chart-2))","hsl(var(--chart-3))","hsl(var(--chart-4))","hsl(var(--chart-5))"];
-const PALETTE = ["#5B2A86","#7B3FA0","#A56EBE","#3FA34D","#4B3F72","#C094D6","#2A1A4A"];
+const PALETTE = ["#5B2A86", "#7B3FA0", "#A56EBE", "#3FA34D", "#4B3F72", "#C094D6", "#2A1A4A"];
 
 export function Dashboard() {
   const { state, reset, addManyTDN } = useDashboard();
@@ -36,7 +35,7 @@ export function Dashboard() {
 
   const anos = useMemo(() => {
     const s = new Set<number>([anoSel, new Date().getFullYear(), 2026]);
-    state.tdn.forEach((t) => s.add(new Date(t.data).getFullYear()));
+    state.tdn.forEach((t) => { if (t.data) s.add(Number(t.data.split("-")[0])); });
     state.quaseFalha.forEach((q) => s.add(q.ano));
     return Array.from(s).sort();
   }, [state, anoSel]);
@@ -46,24 +45,27 @@ export function Dashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `chn-dashboard-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `chn-dashboard-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Backup exportado");
+    toast.success("Backup exportado com sucesso");
   };
 
   const importarPlanilha = async (file: File) => {
     try {
       const entries = await parseSpreadsheet(file);
-      if (!entries.length) { toast.error("Nenhum registro encontrado na planilha"); return; }
-      addManyTDN(entries);
-      toast.success(`${entries.length} registros importados da planilha`);
+      const validEntries = entries.filter((e: any) => e && e.data && e.categoria && e.descricao);
+      if (!validEntries.length) {
+        toast.error("Nenhum registro válido encontrado na planilha");
+        return;
+      }
+      addManyTDN(validEntries);
+      toast.success(`${validEntries.length} registros importados da planilha`);
     } catch (err) {
       console.error(err);
-      toast.error("Falha ao ler a planilha");
+      toast.error("Falha ao ler a planilha. Verifique a estrutura do arquivo.");
     }
   };
-
 
   return (
     <div className="min-h-screen bg-background">
@@ -116,7 +118,7 @@ export function Dashboard() {
               <CardHeader><CardTitle>Configurações</CardTitle><CardDescription>Gerenciar dados do dashboard.</CardDescription></CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">Os dados são salvos automaticamente no navegador. Use Exportar/Importar para backup ou para mover entre dispositivos.</p>
-                <Button variant="destructive" onClick={() => { if (confirm("Restaurar dados iniciais? Isso apaga tudo.")) { reset(); toast.success("Dados restaurados."); } }}>
+                <Button variant="destructive" onClick={() => { if (confirm("Restaurar dados iniciais? Isso apaga todos os registros atuais permanentemente.")) { reset(); toast.success("Dados restaurados."); } }}>
                   <Trash2 className="h-4 w-4 mr-1" />Restaurar dados iniciais
                 </Button>
               </CardContent>
@@ -148,13 +150,30 @@ function KPI({ title, value, hint, icon: Icon, tone = "default" }: { title: stri
 
 function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
   const { state } = useDashboard();
-  const tdnAno = state.tdn.filter((t) => new Date(t.data).getFullYear() === ano);
-  const tdnFiltro = mes == null ? tdnAno : tdnAno.filter((t) => new Date(t.data).getMonth() === mes);
+
+  const tdnAno = useMemo(() => {
+    return state.tdn.filter((t) => t.data && Number(t.data.split("-")[0]) === ano);
+  }, [state.tdn, ano]);
+
+  const tdnFiltro = useMemo(() => {
+    if (mes == null) return tdnAno;
+    return tdnAno.filter((t) => {
+      const partes = t.data.split("-");
+      return partes.length >= 2 && (Number(partes[1]) - 1) === mes;
+    });
+  }, [tdnAno, mes]);
+
   const periodoLabel = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
 
   const porMes = useMemo(() => {
-    const acc = MESES.map((m, i) => ({ mes: m.slice(0,3), idx: i, total: 0 }));
-    tdnAno.forEach((t) => { const m = new Date(t.data).getMonth(); acc[m].total++; });
+    const acc = MESES.map((m, i) => ({ mes: m.slice(0, 3), idx: i, total: 0 }));
+    tdnAno.forEach((t) => {
+      const partes = t.data.split("-");
+      if (partes.length >= 2) {
+        const m = Number(partes[1]) - 1;
+        if (acc[m]) acc[m].total++;
+      }
+    });
     return acc;
   }, [tdnAno]);
 
@@ -165,7 +184,7 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
   }, [tdnFiltro]);
 
   const qfAno = state.quaseFalha.filter((q) => q.ano === ano);
-  const qfChart = qfAno.map((q) => ({ mes: q.mes.slice(0,3), valor: q.percentual != null ? +(q.percentual * 100).toFixed(2) : null }));
+  const qfChart = qfAno.map((q) => ({ mes: q.mes.slice(0, 3), valor: q.percentual != null ? +(q.percentual * 100).toFixed(2) : null }));
   const ultimoQF = [...qfAno].reverse().find((q) => q.percentual != null);
   const meta = state.metaQuaseFalha * 100;
 
@@ -197,11 +216,13 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
     tdnFiltro.forEach((t) => map.set(t.data, (map.get(t.data) ?? 0) + 1));
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([data, total]) => ({
-        data,
-        label: new Date(data + "T00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-        total,
-      }));
+      .map(([data, total]) => {
+        const partes = data.split("-");
+        const diaStr = partes[2] ?? "";
+        const mIdx = Number(partes[1]) - 1;
+        const label = `${diaStr}/${MESES[mIdx]?.slice(0, 3) ?? ""}`;
+        return { data, label, total };
+      });
   }, [tdnFiltro]);
 
   const diasComRegistro = porDia.length;
@@ -262,6 +283,7 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
                 <Pie data={porCategoria} dataKey="value" nameKey="name" outerRadius={90} label={(d) => `${d.name}: ${d.value}`}>
                   {porCategoria.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
                 </Pie>
+                <Tooltip formatter={(value: any, name: any) => [`${value} ocorrências`, name]} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -291,6 +313,7 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
                 <Pie data={porPublico} dataKey="value" nameKey="name" outerRadius={90} label={(d) => `${d.name}: ${d.value}`}>
                   {porPublico.map((_, i) => <Cell key={i} fill={PALETTE[(i+2) % PALETTE.length]} />)}
                 </Pie>
+                <Tooltip formatter={(value: any, name: any) => [`${value} registros`, name]} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -306,7 +329,7 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
               <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
               <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v) => v != null ? `${v}%` : "—"} />
+              <Tooltip formatter={(v: any) => v != null ? `${v}%` : "—"} />
               <ReferenceLine y={meta} stroke={PALETTE[3]} strokeDasharray="5 5" label={{ value: `Meta ${meta}%`, fill: PALETTE[3], fontSize: 12 }} />
               <Line type="monotone" dataKey="valor" stroke={PALETTE[0]} strokeWidth={3} dot={{ r: 5, fill: PALETTE[0] }} connectNulls />
             </LineChart>
@@ -323,12 +346,18 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
   const [filtroCat, setFiltroCat] = useState<string>("todas");
   const [busca, setBusca] = useState("");
 
-  const itens = state.tdn
-    .filter((t) => new Date(t.data).getFullYear() === ano)
-    .filter((t) => mes == null || new Date(t.data).getMonth() === mes)
-    .filter((t) => filtroCat === "todas" || t.categoria === filtroCat)
-    .filter((t) => !busca || t.descricao.toLowerCase().includes(busca.toLowerCase()) || t.localizacao.toLowerCase().includes(busca.toLowerCase()))
-    .sort((a, b) => b.data.localeCompare(a.data));
+  const itens = useMemo(() => {
+    return state.tdn
+      .filter((t) => t.data && Number(t.data.split("-")[0]) === ano)
+      .filter((t) => {
+        if (mes == null) return true;
+        const partes = t.data.split("-");
+        return partes.length >= 2 && (Number(partes[1]) - 1) === mes;
+      })
+      .filter((t) => filtroCat === "todas" || t.categoria === filtroCat)
+      .filter((t) => !busca || t.descricao.toLowerCase().includes(busca.toLowerCase()) || t.localizacao.toLowerCase().includes(busca.toLowerCase()))
+      .sort((a, b) => b.data.localeCompare(a.data));
+  }, [state.tdn, ano, mes, filtroCat, busca]);
 
   const periodo = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
 
@@ -342,7 +371,7 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />Novo registro</Button></DialogTrigger>
-            <NovoTDNDialog onSave={(e) => { addTDN(e); setOpen(false); toast.success("Registro adicionado"); }} />
+            <NovoTDNDialog onSave={(e) => { addTDN(e); setOpen(false); toast.success("Registro adicionado com sucesso"); }} />
           </Dialog>
         </CardHeader>
         <CardContent>
@@ -372,19 +401,27 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itens.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Sem registros</TableCell></TableRow>}
-                {itens.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="whitespace-nowrap">{new Date(t.data + "T00:00").toLocaleDateString("pt-BR")}</TableCell>
-                    <TableCell><Badge variant="secondary">{t.categoria}</Badge></TableCell>
-                    <TableCell>{t.refeicao}</TableCell>
-                    <TableCell>{t.publico}</TableCell>
-                    <TableCell className="max-w-md">{t.descricao}</TableCell>
-                    <TableCell>{t.localizacao}</TableCell>
-                    <TableCell>{t.unidade}</TableCell>
-                    <TableCell><Button size="icon" variant="ghost" onClick={() => { if (confirm("Remover?")) removeTDN(t.id); }}><Trash2 className="h-4 w-4" /></Button></TableCell>
-                  </TableRow>
-                ))}
+                {itens.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum registro encontrado para este período.</TableCell></TableRow>}
+                {itens.map((t) => {
+                  const [anoStr, mesStr, diaStr] = t.data.split("-");
+                  const dataFormatada = `${diaStr}/${mesStr}/${anoStr}`;
+                  return (
+                    <TableRow key={t.id}>
+                      <TableCell className="whitespace-nowrap">{dataFormatada}</TableCell>
+                      <TableCell><Badge variant="secondary">{t.categoria}</Badge></TableCell>
+                      <TableCell>{t.refeicao}</TableCell>
+                      <TableCell>{t.publico}</TableCell>
+                      <TableCell className="max-w-md">{t.descricao}</TableCell>
+                      <TableCell>{t.localizacao}</TableCell>
+                      <TableCell>{t.unidade}</TableCell>
+                      <TableCell>
+                        <Button size="icon" variant="ghost" onClick={() => { if (confirm("Deseja realmente remover este termo de notificação?")) removeTDN(t.id); }} className="text-destructive hover:bg-destructive/10">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -395,15 +432,27 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
 }
 
 function NovoTDNDialog({ onSave }: { onSave: (e: any) => void }) {
-  const [form, setForm] = useState({
-    data: new Date().toISOString().slice(0,10),
+  const camposIniciais = {
+    data: new Date().toISOString().slice(0, 10),
     categoria: "Qualidade" as Categoria,
     refeicao: "Almoço" as Refeicao,
     publico: "Paciente" as PublicoAlvo,
     descricao: "",
     localizacao: "",
     unidade: "I" as Unidade,
-  });
+  };
+
+  const [form, setForm] = useState(camposIniciais);
+
+  const handleSalvar = () => {
+    if (!form.descricao.trim()) {
+      toast.error("O campo descrição é obrigatório");
+      return;
+    }
+    onSave(form);
+    setForm(camposIniciais);
+  };
+
   return (
     <DialogContent className="max-w-lg">
       <DialogHeader><DialogTitle>Novo Termo de Notificação</DialogTitle></DialogHeader>
@@ -440,9 +489,7 @@ function NovoTDNDialog({ onSave }: { onSave: (e: any) => void }) {
         <div><Label>Localização (leito/setor)</Label><Input value={form.localizacao} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} /></div>
         <div><Label>Descrição</Label><Textarea rows={3} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>
       </div>
-      <DialogFooter>
-        <Button onClick={() => { if (!form.descricao) { toast.error("Descrição obrigatória"); return; } onSave(form); }}>Salvar</Button>
-      </DialogFooter>
+      <DialogFooter><Button onClick={handleSalvar} className="w-full sm:w-auto">Salvar</Button></DialogFooter>
     </DialogContent>
   );
 }
@@ -457,25 +504,25 @@ function QFView({ ano }: { ano: number }) {
       <Card>
         <CardHeader>
           <CardTitle>Indicador Quase-Falha — {ano}</CardTitle>
-          <CardDescription>Edição mensal direta na tabela. Meta atual: {(meta*100).toFixed(0)}%</CardDescription>
+          <CardDescription>Edição mensal direta na tabela. Meta atual: {(meta * 100).toFixed(0)}%</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3 mb-4">
             <Label className="text-sm">Meta (%)</Label>
-            <Input type="number" className="w-24" min={0} max={100} step={1} value={Math.round(meta*100)} onChange={(e) => setMeta(Math.max(0, Math.min(100, Number(e.target.value)))/100)} />
+            <Input type="number" className="w-24" min={0} max={100} step={1} value={Math.round(meta * 100)} onChange={(e) => setMeta(Math.max(0, Math.min(100, Number(e.target.value))) / 100)} />
           </div>
-          <div className="rounded-md border overflow-x-auto">
+          <div className="rounded-md border overflow-x-auto w-full">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mês</TableHead>
-                  <TableHead>%</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="w-24">Mês</TableHead>
+                  <TableHead className="w-28">%</TableHead>
+                  <TableHead className="w-36">Status</TableHead>
                   <TableHead>Não-conformidade</TableHead>
                   <TableHead>Causa</TableHead>
                   <TableHead>Ação</TableHead>
-                  <TableHead>Prazo</TableHead>
-                  <TableHead>Responsável</TableHead>
+                  <TableHead className="w-28">Prazo</TableHead>
+                  <TableHead className="w-48">Responsável</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -483,22 +530,20 @@ function QFView({ ano }: { ano: number }) {
                   const ok = q.percentual != null && q.percentual >= meta;
                   return (
                     <TableRow key={q.mes}>
-                      <TableCell className="font-medium">{q.mes}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{q.mes}</TableCell>
                       <TableCell>
-                        <Input type="number" step="0.01" min={0} max={100} className="w-24"
-                          value={q.percentual != null ? +(q.percentual*100).toFixed(2) : ""}
-                          onChange={(e) => updateQF(q.mes, ano, { percentual: e.target.value === "" ? null : Number(e.target.value)/100 })} />
+                        <QFInputDebounced type="number" step="0.01" min="0" max="100" className="w-24" value={q.percentual != null ? String(+(q.percentual * 100).toFixed(2)) : ""} onSave={(v) => updateQF(q.mes, ano, { percentual: v === "" ? null : Number(v) / 100 })} />
                       </TableCell>
                       <TableCell>
                         {q.percentual == null ? <Badge variant="outline">—</Badge>
                           : ok ? <Badge className="bg-accent text-accent-foreground">Meta atingida</Badge>
                           : <Badge variant="destructive">Abaixo da meta</Badge>}
                       </TableCell>
-                      <QFCell value={q.naoConformidade} onChange={(v) => updateQF(q.mes, ano, { naoConformidade: v })} />
-                      <QFCell value={q.causa} onChange={(v) => updateQF(q.mes, ano, { causa: v })} />
-                      <QFCell value={q.acao} onChange={(v) => updateQF(q.mes, ano, { acao: v })} />
-                      <TableCell><Input className="w-24" value={q.prazo ?? ""} onChange={(e) => updateQF(q.mes, ano, { prazo: e.target.value })} placeholder="30 dias" /></TableCell>
-                      <TableCell><Input className="w-44" value={q.responsavel ?? ""} onChange={(e) => updateQF(q.mes, ano, { responsavel: e.target.value })} /></TableCell>
+                      <TableCell><QFTextareaDebounced value={q.naoConformidade ?? ""} onSave={(v) => updateQF(q.mes, ano, { naoConformidade: v })} /></TableCell>
+                      <TableCell><QFTextareaDebounced value={q.causa ?? ""} onSave={(v) => updateQF(q.mes, ano, { causa: v })} /></TableCell>
+                      <TableCell><QFTextareaDebounced value={q.acao ?? ""} onSave={(v) => updateQF(q.mes, ano, { acao: v })} /></TableCell>
+                      <TableCell><QFInputDebounced className="w-24" value={q.prazo ?? ""} onSave={(v) => updateQF(q.mes, ano, { prazo: v })} placeholder="30 dias" /></TableCell>
+                      <TableCell><QFInputDebounced className="w-44" value={q.responsavel ?? ""} onSave={(v) => updateQF(q.mes, ano, { responsavel: v })} /></TableCell>
                     </TableRow>
                   );
                 })}
@@ -508,16 +553,16 @@ function QFView({ ano }: { ano: number }) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {linhas.filter(q => q.percentual != null).map((q) => (
           <Card key={q.mes}>
             <CardHeader className="pb-2"><CardTitle className="text-base">{q.mes}</CardTitle></CardHeader>
             <CardContent>
               <div className="flex items-baseline justify-between mb-2">
-                <span className="text-2xl font-semibold">{(q.percentual!*100).toFixed(2)}%</span>
-                <span className="text-xs text-muted-foreground">meta {(meta*100).toFixed(0)}%</span>
+                <span className="text-2xl font-semibold">{(q.percentual! * 100).toFixed(2)}%</span>
+                <span className="text-xs text-muted-foreground">meta {(meta * 100).toFixed(0)}%</span>
               </div>
-              <Progress value={Math.min(100, q.percentual!*100)} />
+              <Progress value={Math.min(100, q.percentual! * 100)} />
             </CardContent>
           </Card>
         ))}
@@ -526,6 +571,25 @@ function QFView({ ano }: { ano: number }) {
   );
 }
 
-function QFCell({ value, onChange }: { value?: string; onChange: (v: string) => void }) {
-  return <TableCell><Textarea rows={1} className="min-w-[180px] resize-y" value={value ?? ""} onChange={(e) => onChange(e.target.value)} /></TableCell>;
+/* Inputs com estado local para evitar lag de digitação na tabela Quase-Falha */
+interface DebouncedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
+  value: string;
+  onSave: (v: string) => void;
+}
+
+function QFInputDebounced({ value, onSave, ...props }: DebouncedInputProps) {
+  const [local, setLocal] = useState(value);
+  useEffect(() => { setLocal(value); }, [value]);
+  return <Input {...props} value={local} onChange={(e) => setLocal(e.target.value)} onBlur={() => onSave(local)} />;
+}
+
+interface DebouncedTextareaProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "value"> {
+  value: string;
+  onSave: (v: string) => void;
+}
+
+function QFTextareaDebounced({ value, onSave, ...props }: DebouncedTextareaProps) {
+  const [local, setLocal] = useState(value);
+  useEffect(() => { setLocal(value); }, [value]);
+  return <Textarea rows={1} {...props} className="min-w-[180px] resize-y" value={local} onChange={(e) => setLocal(e.target.value)} onBlur={() => onSave(local)} />;
 }
