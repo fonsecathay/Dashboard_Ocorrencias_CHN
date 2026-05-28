@@ -4,7 +4,7 @@ import { useDashboard } from "@/hooks/use-dashboard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,8 +49,8 @@ const UNIDADES: Unidade[] = ["I", "II", "III", "IV", "V", "-"];
 const PALETTE = ["#5B2A86", "#7B3FA0", "#A56EBE", "#3FA34D", "#4B3F72", "#C094D6", "#2A1A4A"];
 
 export function Dashboard() {
-  const { state, reset, addManyTDN } = useDashboard();
-  const [anoSel, setAnoSel] = useState<number>(2026);
+  const { state, reset, addManyTDN, saveToCloud, loadFromCloud, cloudAvailable, cloudUpdatedAt, syncStatus } = useDashboard();
+  const [anoSel, setAnoSel] = useState<number>(new Date().getFullYear());
   const [mesSel, setMesSel] = useState<string>("todos");
   const { dark, toggle } = useDarkMode();
 
@@ -64,7 +64,6 @@ export function Dashboard() {
   const exportar = () => {
     const wb = XLSX.utils.book_new();
 
-    // Aba TDN
     const tdnRows = state.tdn.map((t) => {
       const [y, m, d] = t.data.split("-");
       return {
@@ -81,7 +80,6 @@ export function Dashboard() {
     wsTdn["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 50 }, { wch: 18 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(wb, wsTdn, "TDN");
 
-    // Aba Quase-Falha
     const qfRows = state.quaseFalha.map((q) => ({
       Mês: q.mes,
       Ano: q.ano,
@@ -97,7 +95,6 @@ export function Dashboard() {
     wsQf["!cols"] = [{ wch: 12 }, { wch: 8 }, { wch: 14 }, { wch: 28 }, { wch: 24 }, { wch: 28 }, { wch: 14 }, { wch: 18 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(wb, wsQf, "Quase-Falha");
 
-    // Aba Meta
     const wsMeta = XLSX.utils.json_to_sheet([{ "Meta Quase-Falha (%)": +(state.metaQuaseFalha * 100).toFixed(2) }]);
     XLSX.utils.book_append_sheet(wb, wsMeta, "Configurações");
 
@@ -147,7 +144,7 @@ export function Dashboard() {
               </SelectContent>
             </Select>
             <Button variant="secondary" size="icon" onClick={toggle} aria-label="Alternar tema" title={dark ? "Modo claro" : "Modo escuro"}>{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
-            <Button variant="secondary" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar Excel</Button>
+            <Button variant="secondary" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar Planilha</Button>
             <label>
               <input type="file" accept=".ods,.xlsx,.xls,.csv,application/vnd.oasis.opendocument.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importarPlanilha(f); e.target.value = ""; }} />
               <Button variant="secondary" size="sm" asChild><span><FileSpreadsheet className="h-4 w-4 mr-1" />Importar planilha</span></Button>
@@ -172,7 +169,46 @@ export function Dashboard() {
             <Card>
               <CardHeader><CardTitle>Configurações</CardTitle><CardDescription>Gerenciar dados do dashboard.</CardDescription></CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">Os dados são salvos automaticamente no navegador. Use Exportar/Importar para backup ou para mover entre dispositivos.</p>
+                <p className="text-sm text-muted-foreground">Os dados são salvos automaticamente no navegador. Para sincronizar entre dispositivos, configure o Supabase.</p>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await saveToCloud();
+                        toast.success("Dados salvos no Supabase com sucesso");
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("Falha ao salvar no Supabase. Verifique a configuração.");
+                      }
+                    }}
+                    disabled={!cloudAvailable}
+                  >
+                    <Download className="h-4 w-4 mr-1" />Salvar no Supabase
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await loadFromCloud();
+                        toast.success("Dados carregados do Supabase");
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("Falha ao carregar do Supabase.");
+                      }
+                    }}
+                    disabled={!cloudAvailable}
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-1" />Carregar do Supabase
+                  </Button>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <div><strong>Status:</strong> {cloudAvailable ? syncStatus : "Supabase não configurado"}</div>
+                  {cloudAvailable && <div><strong>Última nuvem:</strong> {cloudUpdatedAt ?? "—"}</div>}
+                  {!cloudAvailable && <div className="text-xs text-muted-foreground">Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ativar sincronização.</div>}
+                </div>
                 <Button variant="destructive" onClick={() => { if (confirm("Restaurar dados iniciais? Isso apaga todos os registros atuais permanentemente.")) { reset(); toast.success("Dados restaurados."); } }}>
                   <Trash2 className="h-4 w-4 mr-1" />Restaurar dados iniciais
                 </Button>
@@ -396,10 +432,11 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
 }
 
 function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
-  const { state, addTDN, removeTDN } = useDashboard();
+  const { state, addTDN, removeTDN, removeManyTDN } = useDashboard();
   const [open, setOpen] = useState(false);
   const [filtroCat, setFiltroCat] = useState<string>("todas");
   const [busca, setBusca] = useState("");
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const itens = useMemo(() => {
     return state.tdn
@@ -416,18 +453,61 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
 
   const periodo = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
 
+  const selectedIds = useMemo(
+    () => itens.filter((t) => selected[t.id]).map((t) => t.id),
+    [itens, selected],
+  );
+
+  const allSelected = itens.length > 0 && selectedIds.length === itens.length;
+  const selectedCount = selectedIds.length;
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelected((prev) => {
+        const next = { ...prev };
+        itens.forEach((t) => { next[t.id] = true; });
+        return next;
+      });
+    } else {
+      setSelected((prev) => {
+        const next = { ...prev };
+        itens.forEach((t) => { delete next[t.id]; });
+        return next;
+      });
+    }
+  };
+
+  const removeSelected = () => {
+    if (!selectedCount) return;
+    if (!confirm(`Deseja realmente remover ${selectedCount} registro(s) selecionado(s)?`)) return;
+    removeManyTDN(selectedIds);
+    setSelected((prev) => {
+      const next = { ...prev };
+      selectedIds.forEach((id) => delete next[id]);
+      return next;
+    });
+    toast.success(`${selectedCount} registro(s) removido(s) com sucesso`);
+  };
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div>
             <CardTitle>Termo de Notificação</CardTitle>
             <CardDescription>{itens.length} registros em {periodo}</CardDescription>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />Novo registro</Button></DialogTrigger>
-            <NovoTDNDialog onSave={(e) => { addTDN(e); setOpen(false); toast.success("Registro adicionado com sucesso"); }} />
-          </Dialog>
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedCount > 0 && (
+              <Button variant="destructive" size="sm" onClick={removeSelected}>
+                <Trash2 className="h-4 w-4 mr-1" />Excluir selecionados ({selectedCount})
+              </Button>
+            )}
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />Novo registro</Button></DialogTrigger>
+              <NovoTDNDialog onSave={(e) => { addTDN(e); setOpen(false); toast.success("Registro adicionado com sucesso"); }} />
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2 mb-4">
@@ -445,6 +525,13 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(checked) => toggleSelectAll(Boolean(checked))}
+                      aria-label="Selecionar todos"
+                    />
+                  </TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Refeição</TableHead>
@@ -456,17 +543,24 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itens.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum registro encontrado para este período.</TableCell></TableRow>}
+                {itens.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum registro encontrado para este período.</TableCell></TableRow>}
                 {itens.map((t) => {
                   const [anoStr, mesStr, diaStr] = t.data.split("-");
                   const dataFormatada = `${diaStr}/${mesStr}/${anoStr}`;
                   return (
                     <TableRow key={t.id}>
+                      <TableCell className="w-12">
+                        <Checkbox
+                          checked={Boolean(selected[t.id])}
+                          onCheckedChange={(checked) => setSelected((prev) => ({ ...prev, [t.id]: Boolean(checked) }))}
+                          aria-label={`Selecionar registro ${dataFormatada}`}
+                        />
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">{dataFormatada}</TableCell>
                       <TableCell><Badge variant="secondary">{t.categoria}</Badge></TableCell>
                       <TableCell>{t.refeicao}</TableCell>
                       <TableCell>{t.publico}</TableCell>
-                      <TableCell className="max-w-md">{t.descricao}</TableCell>
+                      <TableCell className="max-w-md truncate">{t.descricao}</TableCell>
                       <TableCell>{t.localizacao}</TableCell>
                       <TableCell>{t.unidade}</TableCell>
                       <TableCell>
@@ -500,12 +594,19 @@ function NovoTDNDialog({ onSave }: { onSave: (e: any) => void }) {
   const [form, setForm] = useState(camposIniciais);
 
   const handleSalvar = () => {
+    console.debug("NovoTDNDialog.handleSalvar called", form);
     if (!form.descricao.trim()) {
       toast.error("O campo descrição é obrigatório");
       return;
     }
-    onSave(form);
-    setForm(camposIniciais);
+    try {
+      onSave(form);
+      console.debug("NovoTDNDialog: onSave executed");
+      setForm(camposIniciais);
+    } catch (err) {
+      console.error("NovoTDNDialog onSave error", err);
+      toast.error("Falha ao adicionar registro");
+    }
   };
 
   return (
@@ -564,41 +665,63 @@ function QFView({ ano }: { ano: number }) {
         <CardContent>
           <div className="flex items-center gap-3 mb-4">
             <Label className="text-sm">Meta (%)</Label>
-            <Input type="number" className="w-24" min={0} max={100} step={1} value={Math.round(meta * 100)} onChange={(e) => setMeta(Math.max(0, Math.min(100, Number(e.target.value))) / 100)} />
+            <Input 
+              type="number" 
+              className="w-24" 
+              value={String(meta * 100)} 
+              onChange={(e) => setMeta(Number(e.target.value) / 100)} 
+            />
           </div>
-          <div className="rounded-md border overflow-x-auto w-full">
+          <div className="rounded-md border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-24">Mês</TableHead>
-                  <TableHead className="w-28">%</TableHead>
-                  <TableHead className="w-36">Status</TableHead>
-                  <TableHead>Não-conformidade</TableHead>
+                  <TableHead>Mês</TableHead>
+                  <TableHead>Percentual (%)</TableHead>
+                  <TableHead>Não Conformidade</TableHead>
                   <TableHead>Causa</TableHead>
-                  <TableHead>Ação</TableHead>
-                  <TableHead className="w-28">Prazo</TableHead>
-                  <TableHead className="w-48">Responsável</TableHead>
+                  <TableHead>Ação Corretiva</TableHead>
+                  <TableHead>Responsável</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {linhas.map((q) => {
-                  const ok = q.percentual != null && q.percentual >= meta;
+                {MESES.map((m) => {
+                  const linha = linhas.find((q) => q.mes === m) || { percentual: "" };
                   return (
-                    <TableRow key={q.mes}>
-                      <TableCell className="font-medium whitespace-nowrap">{q.mes}</TableCell>
+                    <TableRow key={m}>
+                      <TableCell className="font-medium">{m}</TableCell>
                       <TableCell>
-                        <QFInputDebounced type="number" step="0.01" min="0" max="100" className="w-24" value={q.percentual != null ? String(+(q.percentual * 100).toFixed(2)) : ""} onSave={(v) => updateQF(q.mes, ano, { percentual: v === "" ? null : Number(v) / 100 })} />
+                        <Input 
+                          type="number" 
+                          className="w-20" 
+                          value={linha.percentual != null ? String(+(linha.percentual * 100).toFixed(2)) : ""} 
+                          onChange={(e) => updateQF(m, ano, { percentual: e.target.value ? Number(e.target.value) / 100 : null })}
+                        />
                       </TableCell>
                       <TableCell>
-                        {q.percentual == null ? <Badge variant="outline">—</Badge>
-                          : ok ? <Badge className="bg-accent text-accent-foreground">Meta atingida</Badge>
-                          : <Badge variant="destructive">Abaixo da meta</Badge>}
+                        <Input 
+                          value={linha.naoConformidade ?? ""} 
+                          onChange={(e) => updateQF(m, ano, { naoConformidade: e.target.value })}
+                        />
                       </TableCell>
-                      <TableCell><QFTextareaDebounced value={q.naoConformidade ?? ""} onSave={(v) => updateQF(q.mes, ano, { naoConformidade: v })} /></TableCell>
-                      <TableCell><QFTextareaDebounced value={q.causa ?? ""} onSave={(v) => updateQF(q.mes, ano, { causa: v })} /></TableCell>
-                      <TableCell><QFTextareaDebounced value={q.acao ?? ""} onSave={(v) => updateQF(q.mes, ano, { acao: v })} /></TableCell>
-                      <TableCell><QFInputDebounced className="w-24" value={q.prazo ?? ""} onSave={(v) => updateQF(q.mes, ano, { prazo: v })} placeholder="30 dias" /></TableCell>
-                      <TableCell><QFInputDebounced className="w-44" value={q.responsavel ?? ""} onSave={(v) => updateQF(q.mes, ano, { responsavel: v })} /></TableCell>
+                      <TableCell>
+                        <Input 
+                          value={linha.causa ?? ""} 
+                          onChange={(e) => updateQF(m, ano, { causa: e.target.value })}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          value={linha.acao ?? ""} 
+                          onChange={(e) => updateQF(m, ano, { acao: e.target.value })}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          value={linha.responsavel ?? ""} 
+                          onChange={(e) => updateQF(m, ano, { responsavel: e.target.value })}
+                        />
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -607,44 +730,6 @@ function QFView({ ano }: { ano: number }) {
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {linhas.filter(q => q.percentual != null).map((q) => (
-          <Card key={q.mes}>
-            <CardHeader className="pb-2"><CardTitle className="text-base">{q.mes}</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex items-baseline justify-between mb-2">
-                <span className="text-2xl font-semibold">{(q.percentual! * 100).toFixed(2)}%</span>
-                <span className="text-xs text-muted-foreground">meta {(meta * 100).toFixed(0)}%</span>
-              </div>
-              <Progress value={Math.min(100, q.percentual! * 100)} />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
     </div>
   );
-}
-
-/* Inputs com estado local para evitar lag de digitação na tabela Quase-Falha */
-interface DebouncedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
-  value: string;
-  onSave: (v: string) => void;
-}
-
-function QFInputDebounced({ value, onSave, ...props }: DebouncedInputProps) {
-  const [local, setLocal] = useState(value);
-  useEffect(() => { setLocal(value); }, [value]);
-  return <Input {...props} value={local} onChange={(e) => setLocal(e.target.value)} onBlur={() => onSave(local)} />;
-}
-
-interface DebouncedTextareaProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "value"> {
-  value: string;
-  onSave: (v: string) => void;
-}
-
-function QFTextareaDebounced({ value, onSave, ...props }: DebouncedTextareaProps) {
-  const [local, setLocal] = useState(value);
-  useEffect(() => { setLocal(value); }, [value]);
-  return <Textarea rows={1} {...props} className="min-w-[180px] resize-y" value={local} onChange={(e) => setLocal(e.target.value)} onBlur={() => onSave(local)} />;
 }

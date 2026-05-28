@@ -108,6 +108,7 @@ export function loadState(): AppState {
     if (!raw) return seed;
     return JSON.parse(raw) as AppState;
   } catch {
+    localStorage.removeItem(STORAGE_KEY);
     return seed;
   }
 }
