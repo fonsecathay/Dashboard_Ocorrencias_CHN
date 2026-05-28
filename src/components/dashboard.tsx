@@ -288,6 +288,17 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
   }, [tdnFiltro]);
 
+  const porRefeicao = useMemo(() => {
+    const ordem = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia"];
+    const map = new Map<string, number>();
+    tdnFiltro.forEach((t) => map.set(t.refeicao, (map.get(t.refeicao) ?? 0) + 1));
+    return Array.from(map.entries())
+      .map(([refeicao, total]) => ({ refeicao, total }))
+      .sort((a, b) => ordem.indexOf(a.refeicao) - ordem.indexOf(b.refeicao));
+  }, [tdnFiltro]);
+
+  const refeicaoTop = [...porRefeicao].sort((a, b) => b.total - a.total)[0];
+
   const porUnidade = useMemo(() => {
     const map = new Map<string, number>();
     tdnFiltro.forEach((t) => {
