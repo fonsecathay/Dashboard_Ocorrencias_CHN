@@ -422,6 +422,21 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Por tipo de refeição</CardTitle><CardDescription>Ocorrências por refeição</CardDescription></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={porRefeicao}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="refeicao" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: any) => [`${value} ocorrências`, "Total"]} />
+                <Bar dataKey="total" fill={PALETTE[3 % PALETTE.length]} radius={[6,6,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
