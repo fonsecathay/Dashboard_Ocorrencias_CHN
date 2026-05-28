@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,10 +17,29 @@ import {
   LineChart, Line, ReferenceLine, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
-import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet } from "lucide-react";
+import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
 import { MESES, type Categoria, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
+
+function useDarkMode() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const saved = localStorage.getItem("chn-theme");
+    const isDark = saved ? saved === "dark" : window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+    setDark(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+  const toggle = () => {
+    setDark((d) => {
+      const next = !d;
+      document.documentElement.classList.toggle("dark", next);
+      localStorage.setItem("chn-theme", next ? "dark" : "light");
+      return next;
+    });
+  };
+  return { dark, toggle };
+}
 
 const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "Atraso", "Higiene", "Temperatura", "Outros"];
 const REFEICOES: Refeicao[] = ["Desjejum", "Avulso", "Almoço", "Lanche", "Jantar", "Ceia"];
@@ -32,6 +52,7 @@ export function Dashboard() {
   const { state, reset, addManyTDN } = useDashboard();
   const [anoSel, setAnoSel] = useState<number>(2026);
   const [mesSel, setMesSel] = useState<string>("todos");
+  const { dark, toggle } = useDarkMode();
 
   const anos = useMemo(() => {
     const s = new Set<number>([anoSel, new Date().getFullYear(), 2026]);
@@ -41,14 +62,47 @@ export function Dashboard() {
   }, [state, anoSel]);
 
   const exportar = () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `chn-dashboard-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Backup exportado com sucesso");
+    const wb = XLSX.utils.book_new();
+
+    // Aba TDN
+    const tdnRows = state.tdn.map((t) => {
+      const [y, m, d] = t.data.split("-");
+      return {
+        Data: `${d}/${m}/${y}`,
+        Categoria: t.categoria,
+        Refeição: t.refeicao,
+        "Público-alvo": t.publico,
+        Descrição: t.descricao,
+        Localização: t.localizacao,
+        Unidade: t.unidade,
+      };
+    });
+    const wsTdn = XLSX.utils.json_to_sheet(tdnRows);
+    wsTdn["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 50 }, { wch: 18 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, wsTdn, "TDN");
+
+    // Aba Quase-Falha
+    const qfRows = state.quaseFalha.map((q) => ({
+      Mês: q.mes,
+      Ano: q.ano,
+      "Percentual (%)": q.percentual != null ? +(q.percentual * 100).toFixed(2) : "",
+      "Não conformidade": q.naoConformidade ?? "",
+      Causa: q.causa ?? "",
+      Ação: q.acao ?? "",
+      Prazo: q.prazo ?? "",
+      Responsável: q.responsavel ?? "",
+      "Data limite": q.dataLimite ?? "",
+    }));
+    const wsQf = XLSX.utils.json_to_sheet(qfRows);
+    wsQf["!cols"] = [{ wch: 12 }, { wch: 8 }, { wch: 14 }, { wch: 28 }, { wch: 24 }, { wch: 28 }, { wch: 14 }, { wch: 18 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, wsQf, "Quase-Falha");
+
+    // Aba Meta
+    const wsMeta = XLSX.utils.json_to_sheet([{ "Meta Quase-Falha (%)": +(state.metaQuaseFalha * 100).toFixed(2) }]);
+    XLSX.utils.book_append_sheet(wb, wsMeta, "Configurações");
+
+    XLSX.writeFile(wb, `chn-dashboard-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Planilha exportada com sucesso");
   };
 
   const importarPlanilha = async (file: File) => {
@@ -92,7 +146,8 @@ export function Dashboard() {
                 {MESES.map((m, i) => <SelectItem key={m} value={String(i)}>{m.charAt(0) + m.slice(1).toLowerCase()}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button variant="secondary" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar</Button>
+            <Button variant="secondary" size="icon" onClick={toggle} aria-label="Alternar tema" title={dark ? "Modo claro" : "Modo escuro"}>{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
+            <Button variant="secondary" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar Excel</Button>
             <label>
               <input type="file" accept=".ods,.xlsx,.xls,.csv,application/vnd.oasis.opendocument.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importarPlanilha(f); e.target.value = ""; }} />
               <Button variant="secondary" size="sm" asChild><span><FileSpreadsheet className="h-4 w-4 mr-1" />Importar planilha</span></Button>
