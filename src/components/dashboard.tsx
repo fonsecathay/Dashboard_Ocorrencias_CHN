@@ -52,6 +52,7 @@ export function Dashboard() {
   const { state, reset, addManyTDN } = useDashboard();
   const [anoSel, setAnoSel] = useState<number>(2026);
   const [mesSel, setMesSel] = useState<string>("todos");
+  const { dark, toggle } = useDarkMode();
 
   const anos = useMemo(() => {
     const s = new Set<number>([anoSel, new Date().getFullYear(), 2026]);
@@ -61,14 +62,47 @@ export function Dashboard() {
   }, [state, anoSel]);
 
   const exportar = () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `chn-dashboard-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Backup exportado com sucesso");
+    const wb = XLSX.utils.book_new();
+
+    // Aba TDN
+    const tdnRows = state.tdn.map((t) => {
+      const [y, m, d] = t.data.split("-");
+      return {
+        Data: `${d}/${m}/${y}`,
+        Categoria: t.categoria,
+        Refeição: t.refeicao,
+        "Público-alvo": t.publico,
+        Descrição: t.descricao,
+        Localização: t.localizacao,
+        Unidade: t.unidade,
+      };
+    });
+    const wsTdn = XLSX.utils.json_to_sheet(tdnRows);
+    wsTdn["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 50 }, { wch: 18 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, wsTdn, "TDN");
+
+    // Aba Quase-Falha
+    const qfRows = state.quaseFalha.map((q) => ({
+      Mês: q.mes,
+      Ano: q.ano,
+      "Percentual (%)": q.percentual != null ? +(q.percentual * 100).toFixed(2) : "",
+      "Não conformidade": q.naoConformidade ?? "",
+      Causa: q.causa ?? "",
+      Ação: q.acao ?? "",
+      Prazo: q.prazo ?? "",
+      Responsável: q.responsavel ?? "",
+      "Data limite": q.dataLimite ?? "",
+    }));
+    const wsQf = XLSX.utils.json_to_sheet(qfRows);
+    wsQf["!cols"] = [{ wch: 12 }, { wch: 8 }, { wch: 14 }, { wch: 28 }, { wch: 24 }, { wch: 28 }, { wch: 14 }, { wch: 18 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, wsQf, "Quase-Falha");
+
+    // Aba Meta
+    const wsMeta = XLSX.utils.json_to_sheet([{ "Meta Quase-Falha (%)": +(state.metaQuaseFalha * 100).toFixed(2) }]);
+    XLSX.utils.book_append_sheet(wb, wsMeta, "Configurações");
+
+    XLSX.writeFile(wb, `chn-dashboard-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast.success("Planilha exportada com sucesso");
   };
 
   const importarPlanilha = async (file: File) => {
