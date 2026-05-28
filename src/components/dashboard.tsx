@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,10 +17,29 @@ import {
   LineChart, Line, ReferenceLine, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
-import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet } from "lucide-react";
+import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
 import { MESES, type Categoria, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
+
+function useDarkMode() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    const saved = localStorage.getItem("chn-theme");
+    const isDark = saved ? saved === "dark" : window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+    setDark(isDark);
+    document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+  const toggle = () => {
+    setDark((d) => {
+      const next = !d;
+      document.documentElement.classList.toggle("dark", next);
+      localStorage.setItem("chn-theme", next ? "dark" : "light");
+      return next;
+    });
+  };
+  return { dark, toggle };
+}
 
 const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "Atraso", "Higiene", "Temperatura", "Outros"];
 const REFEICOES: Refeicao[] = ["Desjejum", "Avulso", "Almoço", "Lanche", "Jantar", "Ceia"];
