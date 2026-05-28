@@ -686,7 +686,7 @@ function QFView({ ano }: { ano: number }) {
               </TableHeader>
               <TableBody>
                 {MESES.map((m) => {
-                  const linha = linhas.find((q) => q.mes === m) || { percentual: "" };
+                  const linha: Partial<QuaseFalhaRecord> = linhas.find((q) => q.mes === m) ?? { percentual: null };
                   return (
                     <TableRow key={m}>
                       <TableCell className="font-medium">{m}</TableCell>
