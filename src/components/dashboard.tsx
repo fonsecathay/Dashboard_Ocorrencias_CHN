@@ -17,7 +17,7 @@ import {
   LineChart, Line, ReferenceLine, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
-import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun } from "lucide-react";
+import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun, Utensils } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
 import { MESES, type Categoria, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
