@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import * as XLSX from "xlsx";
-import { useDashboard } from "@/hooks/use-dashboard";
+import { useDashboard, type QuaseFalhaRecord } from "@/hooks/use-dashboard";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -686,7 +686,7 @@ function QFView({ ano }: { ano: number }) {
               </TableHeader>
               <TableBody>
                 {MESES.map((m) => {
-                  const linha = linhas.find((q) => q.mes === m) || { percentual: "" };
+                  const linha: Partial<QuaseFalhaRecord> = linhas.find((q) => q.mes === m) ?? { percentual: null };
                   return (
                     <TableRow key={m}>
                       <TableCell className="font-medium">{m}</TableCell>
