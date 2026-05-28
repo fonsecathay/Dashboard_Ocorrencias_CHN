@@ -80,6 +80,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "Dashboard executivo de indicadores do Serviço de Nutrição e Dietética — CHN Rede Américas." },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/65405477-6352-4c8d-b7df-a4a5c1daa80e/id-preview-d675b41b--fd576de1-eba3-4577-87f5-b1578c6817aa.lovable.app-1779940359235.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/65405477-6352-4c8d-b7df-a4a5c1daa80e/id-preview-d675b41b--fd576de1-eba3-4577-87f5-b1578c6817aa.lovable.app-1779940359235.png" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
