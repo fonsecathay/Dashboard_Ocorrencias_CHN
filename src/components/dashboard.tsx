@@ -17,7 +17,7 @@ import {
   LineChart, Line, ReferenceLine, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
-import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun } from "lucide-react";
+import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun, Utensils } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
 import { MESES, type Categoria, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
@@ -288,6 +288,17 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
   }, [tdnFiltro]);
 
+  const porRefeicao = useMemo(() => {
+    const ordem = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia"];
+    const map = new Map<string, number>();
+    tdnFiltro.forEach((t) => map.set(t.refeicao, (map.get(t.refeicao) ?? 0) + 1));
+    return Array.from(map.entries())
+      .map(([refeicao, total]) => ({ refeicao, total }))
+      .sort((a, b) => ordem.indexOf(a.refeicao) - ordem.indexOf(b.refeicao));
+  }, [tdnFiltro]);
+
+  const refeicaoTop = [...porRefeicao].sort((a, b) => b.total - a.total)[0];
+
   const porUnidade = useMemo(() => {
     const map = new Map<string, number>();
     tdnFiltro.forEach((t) => {
@@ -329,10 +340,11 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
         <KPI title="Unidade com mais ocorrências" value={unidadeTop?.unidade.replace("Unidade ","Un. ") ?? "—"} hint={unidadeTop ? `${unidadeTop.total} ocorrências` : "sem dados"} icon={Building2} tone="bad" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPI title="Quase-Falha (último mês)" value={ultimoQF?.percentual != null ? `${(ultimoQF.percentual*100).toFixed(2)}%` : "—"} hint={ultimoQF ? `${ultimoQF.mes} · meta ≥ ${meta}%` : "sem dados"} icon={TrendingUp} tone={ultimoQF && ultimoQF.percentual! >= state.metaQuaseFalha ? "good" : "bad"} />
         <KPI title="Média de registros / dia" value={mediaDia} hint={`${diasComRegistro} dia(s) com ocorrência`} icon={TrendingUp} />
         <KPI title="Dia com mais ocorrências" value={diaPico ? diaPico.label : "—"} hint={diaPico ? `${diaPico.total} registro(s)` : "sem dados"} icon={AlertTriangle} tone="bad" />
+        <KPI title="Refeição mais afetada" value={refeicaoTop?.refeicao ?? "—"} hint={refeicaoTop ? `${refeicaoTop.total} ocorrências` : "sem dados"} icon={Utensils} tone="bad" />
       </div>
 
       <Card>
@@ -407,6 +419,21 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
                 <Tooltip formatter={(value: any, name: any) => [`${value} registros`, name]} />
                 <Legend />
               </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Por tipo de refeição</CardTitle><CardDescription>Ocorrências por refeição</CardDescription></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={porRefeicao}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="refeicao" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: any) => [`${value} ocorrências`, "Total"]} />
+                <Bar dataKey="total" fill={PALETTE[3 % PALETTE.length]} radius={[6,6,0,0]} />
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
