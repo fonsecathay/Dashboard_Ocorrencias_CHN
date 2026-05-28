@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { loadState, saveState, type AppState, type TDNEntry, type QuaseFalhaEntry } from "@/lib/dashboard-data";
 
 interface Ctx {
@@ -15,9 +15,23 @@ interface Ctx {
 const DashboardCtx = createContext<Ctx | null>(null);
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
+  // Always start with seed on first render (works for SSR + hydration parity).
   const [state, setState] = useState<AppState>(() => loadState());
+  const hydrated = useRef(false);
 
-  useEffect(() => { saveState(state); }, [state]);
+  // After mount, re-read from localStorage to pick up any saved data and
+  // avoid overwriting it on the first effect tick.
+  useEffect(() => {
+    const saved = loadState();
+    setState(saved);
+    // mark hydrated on the next tick so the save-effect below skips this run
+    hydrated.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated.current) return;
+    saveState(state);
+  }, [state]);
 
   const value: Ctx = {
     state,
