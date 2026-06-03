@@ -42,9 +42,9 @@ function useDarkMode() {
 }
 
 const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "Atraso", "Higiene", "Temperatura", "Outros"];
-const REFEICOES: Refeicao[] = ["Desjejum", "Avulso", "Almoço", "Lanche", "Jantar", "Ceia"];
-const PUBLICOS: PublicoAlvo[] = ["Paciente", "Acompanhante", "Colaborador"];
-const UNIDADES: Unidade[] = ["I", "II", "III", "IV", "V", "-"];
+const REFEICOES: Refeicao[] = ["Desjejum", "Avulso", "Almoço", "Lanche", "Jantar", "Ceia", "Refeição não informada"];
+const PUBLICOS: PublicoAlvo[] = ["Paciente", "Acompanhante"];
+const UNIDADES: Unidade[] = ["I", "II", "III", "IV", "V"];
 
 const PALETTE = ["#5B2A86", "#7B3FA0", "#A56EBE", "#3FA34D", "#4B3F72", "#C094D6", "#2A1A4A"];
 
@@ -289,7 +289,7 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
   }, [tdnFiltro]);
 
   const porRefeicao = useMemo(() => {
-    const ordem = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia"];
+    const ordem = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia","Refeição não informada"];
     const map = new Map<string, number>();
     tdnFiltro.forEach((t) => map.set(t.refeicao, (map.get(t.refeicao) ?? 0) + 1));
     return Array.from(map.entries())

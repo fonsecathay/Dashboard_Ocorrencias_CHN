@@ -16,7 +16,8 @@ export type Refeicao =
   | "Almoço"
   | "Lanche"
   | "Jantar"
-  | "Ceia";
+  | "Ceia"
+  | "Refeição não informada";
 
 export type PublicoAlvo = "Paciente" | "Acompanhante" | "Colaborador";
 
