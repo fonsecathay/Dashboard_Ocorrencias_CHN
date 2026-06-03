@@ -289,7 +289,7 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
   }, [tdnFiltro]);
 
   const porRefeicao = useMemo(() => {
-    const ordem = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia"];
+    const ordem = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia","Refeição não informada"];
     const map = new Map<string, number>();
     tdnFiltro.forEach((t) => map.set(t.refeicao, (map.get(t.refeicao) ?? 0) + 1));
     return Array.from(map.entries())
