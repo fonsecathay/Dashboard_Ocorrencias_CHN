@@ -628,38 +628,52 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
   );
 }
 
-function NovoTDNDialog({ onSave }: { onSave: (e: any) => void }) {
-  const camposIniciais = {
-    data: new Date().toISOString().slice(0, 10),
-    categoria: "Qualidade" as Categoria,
-    refeicao: "Almoço" as Refeicao,
-    publico: "Paciente" as PublicoAlvo,
-    descricao: "",
-    localizacao: "",
-    unidade: "I" as Unidade,
-  };
+type TDNFormValues = {
+  data: string;
+  categoria: Categoria;
+  refeicao: Refeicao;
+  publico: PublicoAlvo;
+  descricao: string;
+  localizacao: string;
+  unidade: Unidade;
+};
 
-  const [form, setForm] = useState(camposIniciais);
+function TDNFormDialog({
+  title,
+  initial,
+  onSave,
+  saveLabel = "Salvar",
+}: {
+  title: string;
+  initial: TDNFormValues;
+  onSave: (e: TDNFormValues) => void;
+  saveLabel?: string;
+}) {
+  const safeInitial: TDNFormValues = {
+    ...initial,
+    unidade: (UNIDADES.includes(initial.unidade) ? initial.unidade : "I") as Unidade,
+    categoria: (CATEGORIAS.includes(initial.categoria) ? initial.categoria : "Qualidade") as Categoria,
+    refeicao: (REFEICOES.includes(initial.refeicao) ? initial.refeicao : "Almoço") as Refeicao,
+    publico: (PUBLICOS.includes(initial.publico) ? initial.publico : "Paciente") as PublicoAlvo,
+  };
+  const [form, setForm] = useState<TDNFormValues>(safeInitial);
 
   const handleSalvar = () => {
-    console.debug("NovoTDNDialog.handleSalvar called", form);
     if (!form.descricao.trim()) {
       toast.error("O campo descrição é obrigatório");
       return;
     }
     try {
       onSave(form);
-      console.debug("NovoTDNDialog: onSave executed");
-      setForm(camposIniciais);
     } catch (err) {
-      console.error("NovoTDNDialog onSave error", err);
-      toast.error("Falha ao adicionar registro");
+      console.error("TDNFormDialog onSave error", err);
+      toast.error("Falha ao salvar registro");
     }
   };
 
   return (
     <DialogContent className="max-w-lg">
-      <DialogHeader><DialogTitle>Novo Termo de Notificação</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
       <div className="grid gap-3 py-2">
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Data</Label><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></div>
@@ -693,9 +707,22 @@ function NovoTDNDialog({ onSave }: { onSave: (e: any) => void }) {
         <div><Label>Localização (leito/setor)</Label><Input value={form.localizacao} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} /></div>
         <div><Label>Descrição</Label><Textarea rows={3} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>
       </div>
-      <DialogFooter><Button onClick={handleSalvar} className="w-full sm:w-auto">Salvar</Button></DialogFooter>
+      <DialogFooter><Button onClick={handleSalvar} className="w-full sm:w-auto">{saveLabel}</Button></DialogFooter>
     </DialogContent>
   );
+}
+
+function NovoTDNDialog({ onSave }: { onSave: (e: TDNFormValues) => void }) {
+  const camposIniciais: TDNFormValues = {
+    data: new Date().toISOString().slice(0, 10),
+    categoria: "Qualidade",
+    refeicao: "Almoço",
+    publico: "Paciente",
+    descricao: "",
+    localizacao: "",
+    unidade: "I",
+  };
+  return <TDNFormDialog title="Novo Termo de Notificação" initial={camposIniciais} onSave={onSave} />;
 }
 
 function QFView({ ano }: { ano: number }) {
