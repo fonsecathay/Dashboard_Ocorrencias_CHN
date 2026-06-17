@@ -594,9 +594,14 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
                       <TableCell>{t.localizacao}</TableCell>
                       <TableCell>{t.unidade}</TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" onClick={() => { if (confirm("Deseja realmente remover este termo de notificação?")) removeTDN(t.id); }} className="text-destructive hover:bg-destructive/10">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label="Editar registro">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => { if (confirm("Deseja realmente remover este termo de notificação?")) removeTDN(t.id); }} className="text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -606,6 +611,19 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
           </div>
         </CardContent>
       </Card>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        {editing && (
+          <TDNFormDialog
+            title="Editar Termo de Notificação"
+            initial={editing}
+            onSave={(e) => {
+              updateTDN(editing.id, e);
+              setEditing(null);
+              toast.success("Registro atualizado com sucesso");
+            }}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
