@@ -461,7 +461,8 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
 }
 
 function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
-  const { state, addTDN, removeTDN, removeManyTDN } = useDashboard();
+  const { state, addTDN, removeTDN, removeManyTDN, updateTDN } = useDashboard();
+  const [editing, setEditing] = useState<any | null>(null);
   const [open, setOpen] = useState(false);
   const [filtroCat, setFiltroCat] = useState<string>("todas");
   const [busca, setBusca] = useState("");
