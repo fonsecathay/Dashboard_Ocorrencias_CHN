@@ -182,6 +182,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     addManyTDN,
     removeTDN,
     removeManyTDN,
+    updateTDN,
     updateQF,
     setMeta: setMetaQuaseFalha,
     importJSON,
