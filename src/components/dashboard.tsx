@@ -41,12 +41,12 @@ function useDarkMode() {
   return { dark, toggle };
 }
 
-const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "Atraso", "Higiene", "Temperatura", "Outros"];
+const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "Atraso", "Higiene", "Temperatura", "Produto sem identificação", "Recolhimento de bandejas", "Abastecimento de água", "Ausência de entrega", "Entrega errada", "Abastecimento geral", "Outros"];
 const REFEICOES: Refeicao[] = ["Desjejum", "Avulso", "Almoço", "Lanche", "Jantar", "Ceia", "Refeição não informada"];
 const PUBLICOS: PublicoAlvo[] = ["Paciente", "Acompanhante"];
 const UNIDADES: Unidade[] = ["I", "II", "III", "IV", "V"];
 
-const PALETTE = ["#5B2A86", "#7B3FA0", "#A56EBE", "#3FA34D", "#4B3F72", "#C094D6", "#2A1A4A"];
+const PALETTE = ["#5B2A86", "#7B3FA0", "#A56EBE", "#3FA34D", "#4B3F72", "#C094D6", "#2A1A4A", "#8E44AD", "#27AE60", "#E67E22", "#16A085", "#D35400", "#34495E"];
 
 export function Dashboard() {
   const { state, reset, addManyTDN, saveToCloud, loadFromCloud, cloudAvailable, cloudUpdatedAt, syncStatus } = useDashboard();
