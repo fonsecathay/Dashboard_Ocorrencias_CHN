@@ -38,6 +38,7 @@ interface Ctx {
   addManyTDN: (rs: Omit<TDNRecord, "id">[]) => void;
   removeTDN: (id: string | number) => void;
   removeManyTDN: (ids: (string | number)[]) => void;
+  updateTDN: (id: string | number, campos: Partial<Omit<TDNRecord, "id">>) => void;
   updateQF: (mes: string, ano: number, campos: Partial<QuaseFalhaRecord>) => void;
   setMeta: (m: number) => void;
   importJSON: (s: AppState) => void;
