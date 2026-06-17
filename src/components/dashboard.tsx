@@ -380,15 +380,17 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
 
         <Card>
           <CardHeader><CardTitle>Por categoria</CardTitle><CardDescription>Distribuição dos registros</CardDescription></CardHeader>
-          <CardContent className="h-72">
+          <CardContent style={{ height: Math.max(288, porCategoria.length * 32 + 60) }}>
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={porCategoria} dataKey="value" nameKey="name" outerRadius={90} label={(d) => `${d.name}: ${d.value}`}>
+              <BarChart data={porCategoria} layout="vertical" margin={{ left: 16, right: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                <YAxis type="category" dataKey="name" width={170} tick={{ fontSize: 11 }} interval={0} />
+                <Tooltip formatter={(value: any) => [`${value} ocorrências`, "Total"]} />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]}>
                   {porCategoria.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-                </Pie>
-                <Tooltip formatter={(value: any, name: any) => [`${value} ocorrências`, name]} />
-                <Legend />
-              </PieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
