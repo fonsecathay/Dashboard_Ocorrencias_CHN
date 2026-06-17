@@ -38,6 +38,7 @@ interface Ctx {
   addManyTDN: (rs: Omit<TDNRecord, "id">[]) => void;
   removeTDN: (id: string | number) => void;
   removeManyTDN: (ids: (string | number)[]) => void;
+  updateTDN: (id: string | number, campos: Partial<Omit<TDNRecord, "id">>) => void;
   updateQF: (mes: string, ano: number, campos: Partial<QuaseFalhaRecord>) => void;
   setMeta: (m: number) => void;
   importJSON: (s: AppState) => void;
@@ -118,6 +119,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const removeTDN = (id: string | number) => setTdn((prev) => prev.filter((item) => item.id !== id));
   const removeManyTDN = (ids: (string | number)[]) => setTdn((prev) => prev.filter((item) => !ids.includes(item.id)));
+  const updateTDN = (id: string | number, campos: Partial<Omit<TDNRecord, "id">>) =>
+    setTdn((prev) => prev.map((item) => (item.id === id ? { ...item, ...campos } : item)));
 
   const updateQF = (mes: string, ano: number, campos: Partial<QuaseFalhaRecord>) => {
     setQuaseFalha((prev) => {
@@ -179,6 +182,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     addManyTDN,
     removeTDN,
     removeManyTDN,
+    updateTDN,
     updateQF,
     setMeta: setMetaQuaseFalha,
     importJSON,

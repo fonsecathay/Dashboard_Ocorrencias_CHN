@@ -17,7 +17,7 @@ import {
   LineChart, Line, ReferenceLine, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { toast } from "sonner";
-import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun, Utensils } from "lucide-react";
+import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun, Utensils, Pencil } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
 import { MESES, type Categoria, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
@@ -41,12 +41,12 @@ function useDarkMode() {
   return { dark, toggle };
 }
 
-const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "Atraso", "Higiene", "Temperatura", "Outros"];
+const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "Atraso", "Higiene", "Temperatura", "Produto sem identificação", "Recolhimento de bandejas", "Abastecimento de água", "Ausência de entrega", "Entrega errada", "Abastecimento geral", "Outros"];
 const REFEICOES: Refeicao[] = ["Desjejum", "Avulso", "Almoço", "Lanche", "Jantar", "Ceia", "Refeição não informada"];
 const PUBLICOS: PublicoAlvo[] = ["Paciente", "Acompanhante"];
 const UNIDADES: Unidade[] = ["I", "II", "III", "IV", "V"];
 
-const PALETTE = ["#5B2A86", "#7B3FA0", "#A56EBE", "#3FA34D", "#4B3F72", "#C094D6", "#2A1A4A"];
+const PALETTE = ["#5B2A86", "#7B3FA0", "#A56EBE", "#3FA34D", "#4B3F72", "#C094D6", "#2A1A4A", "#8E44AD", "#27AE60", "#E67E22", "#16A085", "#D35400", "#34495E"];
 
 export function Dashboard() {
   const { state, reset, addManyTDN, saveToCloud, loadFromCloud, cloudAvailable, cloudUpdatedAt, syncStatus } = useDashboard();
@@ -380,15 +380,17 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
 
         <Card>
           <CardHeader><CardTitle>Por categoria</CardTitle><CardDescription>Distribuição dos registros</CardDescription></CardHeader>
-          <CardContent className="h-72">
+          <CardContent style={{ height: Math.max(288, porCategoria.length * 32 + 60) }}>
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={porCategoria} dataKey="value" nameKey="name" outerRadius={90} label={(d) => `${d.name}: ${d.value}`}>
+              <BarChart data={porCategoria} layout="vertical" margin={{ left: 16, right: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+                <YAxis type="category" dataKey="name" width={170} tick={{ fontSize: 11 }} interval={0} />
+                <Tooltip formatter={(value: any) => [`${value} ocorrências`, "Total"]} />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]}>
                   {porCategoria.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-                </Pie>
-                <Tooltip formatter={(value: any, name: any) => [`${value} ocorrências`, name]} />
-                <Legend />
-              </PieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -459,7 +461,8 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
 }
 
 function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
-  const { state, addTDN, removeTDN, removeManyTDN } = useDashboard();
+  const { state, addTDN, removeTDN, removeManyTDN, updateTDN } = useDashboard();
+  const [editing, setEditing] = useState<any | null>(null);
   const [open, setOpen] = useState(false);
   const [filtroCat, setFiltroCat] = useState<string>("todas");
   const [busca, setBusca] = useState("");
@@ -591,9 +594,14 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
                       <TableCell>{t.localizacao}</TableCell>
                       <TableCell>{t.unidade}</TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" onClick={() => { if (confirm("Deseja realmente remover este termo de notificação?")) removeTDN(t.id); }} className="text-destructive hover:bg-destructive/10">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label="Editar registro">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => { if (confirm("Deseja realmente remover este termo de notificação?")) removeTDN(t.id); }} className="text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -603,42 +611,69 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
           </div>
         </CardContent>
       </Card>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        {editing && (
+          <TDNFormDialog
+            title="Editar Termo de Notificação"
+            initial={editing}
+            onSave={(e) => {
+              updateTDN(editing.id, e);
+              setEditing(null);
+              toast.success("Registro atualizado com sucesso");
+            }}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }
 
-function NovoTDNDialog({ onSave }: { onSave: (e: any) => void }) {
-  const camposIniciais = {
-    data: new Date().toISOString().slice(0, 10),
-    categoria: "Qualidade" as Categoria,
-    refeicao: "Almoço" as Refeicao,
-    publico: "Paciente" as PublicoAlvo,
-    descricao: "",
-    localizacao: "",
-    unidade: "I" as Unidade,
-  };
+type TDNFormValues = {
+  data: string;
+  categoria: Categoria;
+  refeicao: Refeicao;
+  publico: PublicoAlvo;
+  descricao: string;
+  localizacao: string;
+  unidade: Unidade;
+};
 
-  const [form, setForm] = useState(camposIniciais);
+function TDNFormDialog({
+  title,
+  initial,
+  onSave,
+  saveLabel = "Salvar",
+}: {
+  title: string;
+  initial: TDNFormValues;
+  onSave: (e: TDNFormValues) => void;
+  saveLabel?: string;
+}) {
+  const safeInitial: TDNFormValues = {
+    ...initial,
+    unidade: (UNIDADES.includes(initial.unidade) ? initial.unidade : "I") as Unidade,
+    categoria: (CATEGORIAS.includes(initial.categoria) ? initial.categoria : "Qualidade") as Categoria,
+    refeicao: (REFEICOES.includes(initial.refeicao) ? initial.refeicao : "Almoço") as Refeicao,
+    publico: (PUBLICOS.includes(initial.publico) ? initial.publico : "Paciente") as PublicoAlvo,
+  };
+  const [form, setForm] = useState<TDNFormValues>(safeInitial);
 
   const handleSalvar = () => {
-    console.debug("NovoTDNDialog.handleSalvar called", form);
     if (!form.descricao.trim()) {
       toast.error("O campo descrição é obrigatório");
       return;
     }
     try {
       onSave(form);
-      console.debug("NovoTDNDialog: onSave executed");
-      setForm(camposIniciais);
     } catch (err) {
-      console.error("NovoTDNDialog onSave error", err);
-      toast.error("Falha ao adicionar registro");
+      console.error("TDNFormDialog onSave error", err);
+      toast.error("Falha ao salvar registro");
     }
   };
 
   return (
     <DialogContent className="max-w-lg">
-      <DialogHeader><DialogTitle>Novo Termo de Notificação</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
       <div className="grid gap-3 py-2">
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Data</Label><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></div>
@@ -672,9 +707,22 @@ function NovoTDNDialog({ onSave }: { onSave: (e: any) => void }) {
         <div><Label>Localização (leito/setor)</Label><Input value={form.localizacao} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} /></div>
         <div><Label>Descrição</Label><Textarea rows={3} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>
       </div>
-      <DialogFooter><Button onClick={handleSalvar} className="w-full sm:w-auto">Salvar</Button></DialogFooter>
+      <DialogFooter><Button onClick={handleSalvar} className="w-full sm:w-auto">{saveLabel}</Button></DialogFooter>
     </DialogContent>
   );
+}
+
+function NovoTDNDialog({ onSave }: { onSave: (e: TDNFormValues) => void }) {
+  const camposIniciais: TDNFormValues = {
+    data: new Date().toISOString().slice(0, 10),
+    categoria: "Qualidade",
+    refeicao: "Almoço",
+    publico: "Paciente",
+    descricao: "",
+    localizacao: "",
+    unidade: "I",
+  };
+  return <TDNFormDialog title="Novo Termo de Notificação" initial={camposIniciais} onSave={onSave} />;
 }
 
 function QFView({ ano }: { ano: number }) {

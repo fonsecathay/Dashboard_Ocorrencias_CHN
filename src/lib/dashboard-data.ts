@@ -8,6 +8,12 @@ export type Categoria =
   | "Atraso"
   | "Higiene"
   | "Temperatura"
+  | "Produto sem identificação"
+  | "Recolhimento de bandejas"
+  | "Abastecimento de água"
+  | "Ausência de entrega"
+  | "Entrega errada"
+  | "Abastecimento geral"
   | "Outros";
 
 export type Refeicao =
