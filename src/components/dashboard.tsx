@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { Download, Plus, Trash2, AlertTriangle, TrendingUp, Clock, Users, Building2, FileSpreadsheet, Moon, Sun, Utensils, Pencil } from "lucide-react";
 import logo from "@/assets/logo-chn.png";
-import { MESES, type Categoria, type PublicoAlvo, type Refeicao, type Unidade } from "@/lib/dashboard-data";
+import { MESES, type Categoria, type PublicoAlvo, type Refeicao, type Unidade, type Plantao } from "@/lib/dashboard-data";
 import { parseSpreadsheet } from "@/lib/spreadsheet-import";
 
 function useDarkMode() {
@@ -45,6 +45,7 @@ const CATEGORIAS: Categoria[] = ["Qualidade", "Falta de item", "Dieta Errada", "
 const REFEICOES: Refeicao[] = ["Desjejum", "Avulso", "Almoço", "Lanche", "Jantar", "Ceia", "Refeição não informada"];
 const PUBLICOS: PublicoAlvo[] = ["Paciente", "Acompanhante"];
 const UNIDADES: Unidade[] = ["I", "II", "III", "IV", "V"];
+const PLANTOES: Plantao[] = ["Diurno", "Noturno"];
 
 const PALETTE = ["#5B2A86", "#7B3FA0", "#A56EBE", "#3FA34D", "#4B3F72", "#C094D6", "#2A1A4A", "#8E44AD", "#27AE60", "#E67E22", "#16A085", "#D35400", "#34495E"];
 
@@ -74,10 +75,11 @@ export function Dashboard() {
         Descrição: t.descricao,
         Localização: t.localizacao,
         Unidade: t.unidade,
+        Plantão: t.plantao ?? "",
       };
     });
     const wsTdn = XLSX.utils.json_to_sheet(tdnRows);
-    wsTdn["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 50 }, { wch: 18 }, { wch: 10 }];
+    wsTdn["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 50 }, { wch: 18 }, { wch: 10 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(wb, wsTdn, "TDN");
 
     const qfRows = state.quaseFalha.map((q) => ({
@@ -569,11 +571,12 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
                   <TableHead>Descrição</TableHead>
                   <TableHead>Local</TableHead>
                   <TableHead>Un.</TableHead>
+                  <TableHead>Plantão</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itens.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum registro encontrado para este período.</TableCell></TableRow>}
+                {itens.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum registro encontrado para este período.</TableCell></TableRow>}
                 {itens.map((t) => {
                   const [anoStr, mesStr, diaStr] = t.data.split("-");
                   const dataFormatada = `${diaStr}/${mesStr}/${anoStr}`;
@@ -593,6 +596,7 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
                       <TableCell className="max-w-md truncate">{t.descricao}</TableCell>
                       <TableCell>{t.localizacao}</TableCell>
                       <TableCell>{t.unidade}</TableCell>
+                      <TableCell>{t.plantao ?? "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label="Editar registro">
@@ -636,6 +640,7 @@ type TDNFormValues = {
   descricao: string;
   localizacao: string;
   unidade: Unidade;
+  plantao: Plantao;
 };
 
 function TDNFormDialog({
@@ -655,6 +660,7 @@ function TDNFormDialog({
     categoria: (CATEGORIAS.includes(initial.categoria) ? initial.categoria : "Qualidade") as Categoria,
     refeicao: (REFEICOES.includes(initial.refeicao) ? initial.refeicao : "Almoço") as Refeicao,
     publico: (PUBLICOS.includes(initial.publico) ? initial.publico : "Paciente") as PublicoAlvo,
+    plantao: (PLANTOES.includes(initial.plantao) ? initial.plantao : "Diurno") as Plantao,
   };
   const [form, setForm] = useState<TDNFormValues>(safeInitial);
 
@@ -698,11 +704,19 @@ function TDNFormDialog({
             </Select>
           </div>
         </div>
-        <div><Label>Público-alvo</Label>
-          <Select value={form.publico} onValueChange={(v) => setForm({ ...form, publico: v as PublicoAlvo })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{PUBLICOS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>Público-alvo</Label>
+            <Select value={form.publico} onValueChange={(v) => setForm({ ...form, publico: v as PublicoAlvo })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{PUBLICOS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div><Label>Plantão</Label>
+            <Select value={form.plantao} onValueChange={(v) => setForm({ ...form, plantao: v as Plantao })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{PLANTOES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
         </div>
         <div><Label>Localização (leito/setor)</Label><Input value={form.localizacao} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} /></div>
         <div><Label>Descrição</Label><Textarea rows={3} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>
@@ -721,6 +735,7 @@ function NovoTDNDialog({ onSave }: { onSave: (e: TDNFormValues) => void }) {
     descricao: "",
     localizacao: "",
     unidade: "I",
+    plantao: "Diurno",
   };
   return <TDNFormDialog title="Novo Termo de Notificação" initial={camposIniciais} onSave={onSave} />;
 }
