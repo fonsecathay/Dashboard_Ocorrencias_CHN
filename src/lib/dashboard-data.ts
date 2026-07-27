@@ -29,6 +29,8 @@ export type PublicoAlvo = "Paciente" | "Acompanhante" | "Colaborador";
 
 export type Unidade = "I" | "II" | "III" | "IV" | "V" | "-";
 
+export type Plantao = "Diurno" | "Noturno";
+
 export interface TDNEntry {
   id: string;
   data: string; // ISO yyyy-mm-dd
@@ -38,6 +40,7 @@ export interface TDNEntry {
   descricao: string;
   localizacao: string;
   unidade: Unidade;
+  plantao?: Plantao;
 }
 
 export const MESES = [
