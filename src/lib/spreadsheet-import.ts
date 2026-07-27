@@ -1,7 +1,8 @@
 import * as XLSX from "xlsx";
-import type { Categoria, PublicoAlvo, Refeicao, TDNEntry, Unidade } from "./dashboard-data";
+import type { Categoria, Plantao, PublicoAlvo, Refeicao, TDNEntry, Unidade } from "./dashboard-data";
 
 const CATS: Categoria[] = ["Qualidade","Falta de item","Dieta Errada","Atraso","Higiene","Temperatura","Produto sem identificação","Recolhimento de bandejas","Abastecimento de água","Ausência de entrega","Entrega errada","Abastecimento geral","Outros"];
+const PLANTOES: Plantao[] = ["Diurno","Noturno"];
 const REFS: Refeicao[] = ["Desjejum","Avulso","Almoço","Lanche","Jantar","Ceia","Refeição não informada"];
 const PUBS: PublicoAlvo[] = ["Paciente","Acompanhante","Colaborador"];
 const UNIS: Unidade[] = ["I","II","III","IV","V","-"];
@@ -48,6 +49,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   descricao: ["descricao","descrição","observacao","observação","relato","detalhe"],
   localizacao: ["localizacao","localização","local","leito","quarto","setor"],
   unidade: ["unidade","un","torre","ala"],
+  plantao: ["plantao","plantão","turno","periodo","período"],
 };
 
 function mapHeaders(headers: string[]): Record<string, number> {
@@ -95,6 +97,7 @@ export async function parseSpreadsheet(file: File): Promise<Omit<TDNEntry,"id">[
         descricao,
         localizacao: String(r[cols.localizacao ?? -1] ?? "").trim(),
         unidade: pick(r[cols.unidade ?? -1], UNIS, "-"),
+        plantao: pick(r[cols.plantao ?? -1], PLANTOES, "Diurno") as Plantao,
       });
     }
   }

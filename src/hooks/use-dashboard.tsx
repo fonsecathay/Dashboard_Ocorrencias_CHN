@@ -15,6 +15,7 @@ export interface TDNRecord {
   descricao: string;
   localizacao: string;
   unidade: string;
+  plantao?: "Diurno" | "Noturno";
 }
 
 export interface QuaseFalhaRecord {
