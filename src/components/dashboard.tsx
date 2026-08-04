@@ -552,7 +552,7 @@ function VisaoGeral({ ano, mes, plantao }: { ano: number; mes: number | null; pl
   );
 }
 
-function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
+function TDNView({ ano, mes, plantao }: { ano: number; mes: number | null; plantao: Plantao | null }) {
   const { state, addTDN, removeTDN, removeManyTDN, updateTDN } = useDashboard();
   const [editing, setEditing] = useState<any | null>(null);
   const [open, setOpen] = useState(false);
@@ -568,12 +568,14 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
         const partes = t.data.split("-");
         return partes.length >= 2 && (Number(partes[1]) - 1) === mes;
       })
+      .filter((t) => !plantao || (t.plantao ?? "Diurno") === plantao)
       .filter((t) => filtroCat === "todas" || t.categoria === filtroCat)
       .filter((t) => !busca || t.descricao.toLowerCase().includes(busca.toLowerCase()) || t.localizacao.toLowerCase().includes(busca.toLowerCase()))
       .sort((a, b) => b.data.localeCompare(a.data));
-  }, [state.tdn, ano, mes, filtroCat, busca]);
+  }, [state.tdn, ano, mes, plantao, filtroCat, busca]);
 
-  const periodo = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
+  const periodo = `${mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`}${plantao ? ` · Plantão ${plantao}` : ""}`;
+
 
   const selectedIds = useMemo(
     () => itens.filter((t) => selected[t.id]).map((t) => t.id),
