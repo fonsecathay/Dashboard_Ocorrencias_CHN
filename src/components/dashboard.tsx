@@ -53,6 +53,8 @@ export function Dashboard() {
   const { state, reset, addManyTDN, saveToCloud, loadFromCloud, cloudAvailable, cloudUpdatedAt, syncStatus } = useDashboard();
   const [anoSel, setAnoSel] = useState<number>(new Date().getFullYear());
   const [mesSel, setMesSel] = useState<string>("todos");
+  const [plantaoSel, setPlantaoSel] = useState<string>("todos");
+
   const { dark, toggle } = useDarkMode();
 
   const anos = useMemo(() => {
@@ -145,6 +147,15 @@ export function Dashboard() {
                 {MESES.map((m, i) => <SelectItem key={m} value={String(i)}>{m.charAt(0) + m.slice(1).toLowerCase()}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={plantaoSel} onValueChange={setPlantaoSel}>
+              <SelectTrigger className="w-36 bg-white/10 border-white/20 text-white"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os plantões</SelectItem>
+                <SelectItem value="Diurno">Diurno</SelectItem>
+                <SelectItem value="Noturno">Noturno</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Button variant="secondary" size="icon" onClick={toggle} aria-label="Alternar tema" title={dark ? "Modo claro" : "Modo escuro"}>{dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
             <Button variant="secondary" size="sm" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar Planilha</Button>
             <label>
@@ -164,8 +175,9 @@ export function Dashboard() {
             <TabsTrigger value="config">Configurações</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="visao"><VisaoGeral ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} /></TabsContent>
-          <TabsContent value="tdn"><TDNView ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} /></TabsContent>
+          <TabsContent value="visao"><VisaoGeral ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} plantao={plantaoSel === "todos" ? null : (plantaoSel as Plantao)} /></TabsContent>
+          <TabsContent value="tdn"><TDNView ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} plantao={plantaoSel === "todos" ? null : (plantaoSel as Plantao)} /></TabsContent>
+
           <TabsContent value="qf"><QFView ano={anoSel} /></TabsContent>
           <TabsContent value="config">
             <Card>
@@ -241,22 +253,55 @@ function KPI({ title, value, hint, icon: Icon, tone = "default" }: { title: stri
   );
 }
 
-function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
+function VisaoGeral({ ano, mes, plantao }: { ano: number; mes: number | null; plantao: Plantao | null }) {
   const { state } = useDashboard();
 
-  const tdnAno = useMemo(() => {
+  const tdnAnoBase = useMemo(() => {
     return state.tdn.filter((t) => t.data && Number(t.data.split("-")[0]) === ano);
   }, [state.tdn, ano]);
 
-  const tdnFiltro = useMemo(() => {
-    if (mes == null) return tdnAno;
-    return tdnAno.filter((t) => {
+  const tdnAno = useMemo(
+    () => (plantao ? tdnAnoBase.filter((t) => (t.plantao ?? "Diurno") === plantao) : tdnAnoBase),
+    [tdnAnoBase, plantao],
+  );
+
+  const tdnPeriodoBase = useMemo(() => {
+    if (mes == null) return tdnAnoBase;
+    return tdnAnoBase.filter((t) => {
       const partes = t.data.split("-");
       return partes.length >= 2 && (Number(partes[1]) - 1) === mes;
     });
-  }, [tdnAno, mes]);
+  }, [tdnAnoBase, mes]);
 
-  const periodoLabel = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
+  const tdnFiltro = useMemo(
+    () => (plantao ? tdnPeriodoBase.filter((t) => (t.plantao ?? "Diurno") === plantao) : tdnPeriodoBase),
+    [tdnPeriodoBase, plantao],
+  );
+
+  const plantaoStats = useMemo(() => {
+    const diurno = tdnPeriodoBase.filter((t) => (t.plantao ?? "Diurno") === "Diurno").length;
+    const noturno = tdnPeriodoBase.filter((t) => t.plantao === "Noturno").length;
+    const tot = diurno + noturno;
+    return {
+      diurno,
+      noturno,
+      total: tot,
+      pctDiurno: tot ? (diurno / tot) * 100 : 0,
+      pctNoturno: tot ? (noturno / tot) * 100 : 0,
+      porMes: MESES.map((m, i) => {
+        const doMes = tdnAnoBase.filter((t) => Number(t.data.split("-")[1]) - 1 === i);
+        return {
+          mes: m.slice(0, 3),
+          Diurno: doMes.filter((t) => (t.plantao ?? "Diurno") === "Diurno").length,
+          Noturno: doMes.filter((t) => t.plantao === "Noturno").length,
+        };
+      }),
+    };
+  }, [tdnPeriodoBase, tdnAnoBase]);
+
+  const periodoLabel = `${mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`}${plantao ? ` · ${plantao}` : ""}`;
+
+
 
   const porMes = useMemo(() => {
     const acc = MESES.map((m, i) => ({ mes: m.slice(0, 3), idx: i, total: 0 }));
@@ -348,6 +393,51 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
         <KPI title="Dia com mais ocorrências" value={diaPico ? diaPico.label : "—"} hint={diaPico ? `${diaPico.total} registro(s)` : "sem dados"} icon={AlertTriangle} tone="bad" />
         <KPI title="Refeição mais afetada" value={refeicaoTop?.refeicao ?? "—"} hint={refeicaoTop ? `${refeicaoTop.total} ocorrências` : "sem dados"} icon={Utensils} tone="bad" />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Volume por plantão</CardTitle>
+          <CardDescription>Diurno x Noturno — {mes == null ? ano : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Sun className="h-4 w-4" />Volume diurno</div>
+                <div className="mt-1 text-3xl font-semibold">{plantaoStats.diurno}</div>
+                <div className="text-xs text-muted-foreground">{plantaoStats.pctDiurno.toFixed(1)}% do total</div>
+              </div>
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Moon className="h-4 w-4" />Volume noturno</div>
+                <div className="mt-1 text-3xl font-semibold">{plantaoStats.noturno}</div>
+                <div className="text-xs text-muted-foreground">{plantaoStats.pctNoturno.toFixed(1)}% do total</div>
+              </div>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-muted flex">
+              <div style={{ width: `${plantaoStats.pctDiurno}%`, background: PALETTE[0] }} />
+              <div style={{ width: `${plantaoStats.pctNoturno}%`, background: PALETTE[4] }} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use o seletor de plantão no topo para analisar apenas o Diurno ou apenas o Noturno em todos os indicadores.
+            </p>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={plantaoStats.porMes}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="Diurno" fill={PALETTE[0]} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Noturno" fill={PALETTE[4]} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+
 
       <Card>
         <CardHeader><CardTitle>Registros por dia</CardTitle><CardDescription>Evolução diária — {ano}</CardDescription></CardHeader>
@@ -462,7 +552,7 @@ function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
   );
 }
 
-function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
+function TDNView({ ano, mes, plantao }: { ano: number; mes: number | null; plantao: Plantao | null }) {
   const { state, addTDN, removeTDN, removeManyTDN, updateTDN } = useDashboard();
   const [editing, setEditing] = useState<any | null>(null);
   const [open, setOpen] = useState(false);
@@ -478,12 +568,14 @@ function TDNView({ ano, mes }: { ano: number; mes: number | null }) {
         const partes = t.data.split("-");
         return partes.length >= 2 && (Number(partes[1]) - 1) === mes;
       })
+      .filter((t) => !plantao || (t.plantao ?? "Diurno") === plantao)
       .filter((t) => filtroCat === "todas" || t.categoria === filtroCat)
       .filter((t) => !busca || t.descricao.toLowerCase().includes(busca.toLowerCase()) || t.localizacao.toLowerCase().includes(busca.toLowerCase()))
       .sort((a, b) => b.data.localeCompare(a.data));
-  }, [state.tdn, ano, mes, filtroCat, busca]);
+  }, [state.tdn, ano, mes, plantao, filtroCat, busca]);
 
-  const periodo = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
+  const periodo = `${mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`}${plantao ? ` · Plantão ${plantao}` : ""}`;
+
 
   const selectedIds = useMemo(
     () => itens.filter((t) => selected[t.id]).map((t) => t.id),
