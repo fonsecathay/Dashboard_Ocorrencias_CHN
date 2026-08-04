@@ -175,8 +175,9 @@ export function Dashboard() {
             <TabsTrigger value="config">Configurações</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="visao"><VisaoGeral ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} /></TabsContent>
-          <TabsContent value="tdn"><TDNView ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} /></TabsContent>
+          <TabsContent value="visao"><VisaoGeral ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} plantao={plantaoSel === "todos" ? null : (plantaoSel as Plantao)} /></TabsContent>
+          <TabsContent value="tdn"><TDNView ano={anoSel} mes={mesSel === "todos" ? null : Number(mesSel)} plantao={plantaoSel === "todos" ? null : (plantaoSel as Plantao)} /></TabsContent>
+
           <TabsContent value="qf"><QFView ano={anoSel} /></TabsContent>
           <TabsContent value="config">
             <Card>
