@@ -395,6 +395,51 @@ function VisaoGeral({ ano, mes, plantao }: { ano: number; mes: number | null; pl
       </div>
 
       <Card>
+        <CardHeader>
+          <CardTitle>Volume por plantão</CardTitle>
+          <CardDescription>Diurno x Noturno — {mes == null ? ano : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`}</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Sun className="h-4 w-4" />Volume diurno</div>
+                <div className="mt-1 text-3xl font-semibold">{plantaoStats.diurno}</div>
+                <div className="text-xs text-muted-foreground">{plantaoStats.pctDiurno.toFixed(1)}% do total</div>
+              </div>
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Moon className="h-4 w-4" />Volume noturno</div>
+                <div className="mt-1 text-3xl font-semibold">{plantaoStats.noturno}</div>
+                <div className="text-xs text-muted-foreground">{plantaoStats.pctNoturno.toFixed(1)}% do total</div>
+              </div>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-muted flex">
+              <div style={{ width: `${plantaoStats.pctDiurno}%`, background: PALETTE[0] }} />
+              <div style={{ width: `${plantaoStats.pctNoturno}%`, background: PALETTE[4] }} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Use o seletor de plantão no topo para analisar apenas o Diurno ou apenas o Noturno em todos os indicadores.
+            </p>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={plantaoStats.porMes}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="Diurno" fill={PALETTE[0]} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Noturno" fill={PALETTE[4]} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+
+
+      <Card>
         <CardHeader><CardTitle>Registros por dia</CardTitle><CardDescription>Evolução diária — {ano}</CardDescription></CardHeader>
         <CardContent className="h-72">
           <ResponsiveContainer width="100%" height="100%">
