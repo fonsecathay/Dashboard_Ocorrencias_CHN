@@ -53,6 +53,8 @@ export function Dashboard() {
   const { state, reset, addManyTDN, saveToCloud, loadFromCloud, cloudAvailable, cloudUpdatedAt, syncStatus } = useDashboard();
   const [anoSel, setAnoSel] = useState<number>(new Date().getFullYear());
   const [mesSel, setMesSel] = useState<string>("todos");
+  const [plantaoSel, setPlantaoSel] = useState<string>("todos");
+
   const { dark, toggle } = useDarkMode();
 
   const anos = useMemo(() => {
