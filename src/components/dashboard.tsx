@@ -253,22 +253,55 @@ function KPI({ title, value, hint, icon: Icon, tone = "default" }: { title: stri
   );
 }
 
-function VisaoGeral({ ano, mes }: { ano: number; mes: number | null }) {
+function VisaoGeral({ ano, mes, plantao }: { ano: number; mes: number | null; plantao: Plantao | null }) {
   const { state } = useDashboard();
 
-  const tdnAno = useMemo(() => {
+  const tdnAnoBase = useMemo(() => {
     return state.tdn.filter((t) => t.data && Number(t.data.split("-")[0]) === ano);
   }, [state.tdn, ano]);
 
-  const tdnFiltro = useMemo(() => {
-    if (mes == null) return tdnAno;
-    return tdnAno.filter((t) => {
+  const tdnAno = useMemo(
+    () => (plantao ? tdnAnoBase.filter((t) => (t.plantao ?? "Diurno") === plantao) : tdnAnoBase),
+    [tdnAnoBase, plantao],
+  );
+
+  const tdnPeriodoBase = useMemo(() => {
+    if (mes == null) return tdnAnoBase;
+    return tdnAnoBase.filter((t) => {
       const partes = t.data.split("-");
       return partes.length >= 2 && (Number(partes[1]) - 1) === mes;
     });
-  }, [tdnAno, mes]);
+  }, [tdnAnoBase, mes]);
 
-  const periodoLabel = mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`;
+  const tdnFiltro = useMemo(
+    () => (plantao ? tdnPeriodoBase.filter((t) => (t.plantao ?? "Diurno") === plantao) : tdnPeriodoBase),
+    [tdnPeriodoBase, plantao],
+  );
+
+  const plantaoStats = useMemo(() => {
+    const diurno = tdnPeriodoBase.filter((t) => (t.plantao ?? "Diurno") === "Diurno").length;
+    const noturno = tdnPeriodoBase.filter((t) => t.plantao === "Noturno").length;
+    const tot = diurno + noturno;
+    return {
+      diurno,
+      noturno,
+      total: tot,
+      pctDiurno: tot ? (diurno / tot) * 100 : 0,
+      pctNoturno: tot ? (noturno / tot) * 100 : 0,
+      porMes: MESES.map((m, i) => {
+        const doMes = tdnAnoBase.filter((t) => Number(t.data.split("-")[1]) - 1 === i);
+        return {
+          mes: m.slice(0, 3),
+          Diurno: doMes.filter((t) => (t.plantao ?? "Diurno") === "Diurno").length,
+          Noturno: doMes.filter((t) => t.plantao === "Noturno").length,
+        };
+      }),
+    };
+  }, [tdnPeriodoBase, tdnAnoBase]);
+
+  const periodoLabel = `${mes == null ? `${ano}` : `${MESES[mes].charAt(0) + MESES[mes].slice(1).toLowerCase()} / ${ano}`}${plantao ? ` · ${plantao}` : ""}`;
+
+
 
   const porMes = useMemo(() => {
     const acc = MESES.map((m, i) => ({ mes: m.slice(0, 3), idx: i, total: 0 }));
