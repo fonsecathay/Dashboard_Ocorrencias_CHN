@@ -183,7 +183,7 @@ export function Dashboard() {
             <Card>
               <CardHeader><CardTitle>Configurações</CardTitle><CardDescription>Gerenciar dados do dashboard.</CardDescription></CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">Os dados são salvos automaticamente no navegador. Para sincronizar entre dispositivos, configure o Supabase.</p>
+                <p className="text-sm text-muted-foreground">Os dados são salvos automaticamente na nuvem e ficam visíveis para todos os usuários, em qualquer dispositivo.</p>
                 <div className="flex flex-wrap gap-2 items-center">
                   <Button
                     variant="secondary"
@@ -191,15 +191,15 @@ export function Dashboard() {
                     onClick={async () => {
                       try {
                         await saveToCloud();
-                        toast.success("Dados salvos no Supabase com sucesso");
+                        toast.success("Dados salvos na nuvem com sucesso");
                       } catch (err) {
                         console.error(err);
-                        toast.error("Falha ao salvar no Supabase. Verifique a configuração.");
+                        toast.error("Falha ao salvar na nuvem.");
                       }
                     }}
                     disabled={!cloudAvailable}
                   >
-                    <Download className="h-4 w-4 mr-1" />Salvar no Supabase
+                    <Download className="h-4 w-4 mr-1" />Salvar agora
                   </Button>
                   <Button
                     variant="secondary"
@@ -207,22 +207,22 @@ export function Dashboard() {
                     onClick={async () => {
                       try {
                         await loadFromCloud();
-                        toast.success("Dados carregados do Supabase");
+                        toast.success("Dados atualizados da nuvem");
                       } catch (err) {
                         console.error(err);
-                        toast.error("Falha ao carregar do Supabase.");
+                        toast.error("Falha ao carregar da nuvem.");
                       }
                     }}
                     disabled={!cloudAvailable}
                   >
-                    <FileSpreadsheet className="h-4 w-4 mr-1" />Carregar do Supabase
+                    <FileSpreadsheet className="h-4 w-4 mr-1" />Recarregar da nuvem
                   </Button>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <div><strong>Status:</strong> {cloudAvailable ? syncStatus : "Supabase não configurado"}</div>
-                  {cloudAvailable && <div><strong>Última nuvem:</strong> {cloudUpdatedAt ?? "—"}</div>}
-                  {!cloudAvailable && <div className="text-xs text-muted-foreground">Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY para ativar sincronização.</div>}
+                  <div><strong>Status:</strong> {syncStatus}</div>
+                  <div><strong>Última atualização:</strong> {cloudUpdatedAt ?? "—"}</div>
                 </div>
+
                 <Button variant="destructive" onClick={() => { if (confirm("Restaurar dados iniciais? Isso apaga todos os registros atuais permanentemente.")) { reset(); toast.success("Dados restaurados."); } }}>
                   <Trash2 className="h-4 w-4 mr-1" />Restaurar dados iniciais
                 </Button>
