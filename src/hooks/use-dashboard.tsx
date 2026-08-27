@@ -1,10 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-// Inicializa o cliente do Supabase puxando as variáveis do .env
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+const SHARED_ID = "shared";
+const LOCAL_KEY = "chn-dashboard-data";
 
 export interface TDNRecord {
   id: string | number;
@@ -55,61 +53,145 @@ const DashboardCtx = createContext<Ctx | null>(null);
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [tdn, setTdn] = useState<TDNRecord[]>([]);
   const [quaseFalha, setQuaseFalha] = useState<QuaseFalhaRecord[]>([]);
-  const [metaQuaseFalha, setMetaQuaseFalha] = useState<number>(0.8);
+  const [metaQuaseFalha, setMetaQuaseFalha] = useState<number>(0.65);
   const [cloudUpdatedAt, setCloudUpdatedAt] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<string>("Sincronizado");
+  const [syncStatus, setSyncStatus] = useState<string>("Carregando...");
 
-  const cloudAvailable = !!supabase;
+  // evita salvar antes de carregar, e evita eco do próprio salvamento
+  const loadedRef = useRef(false);
+  const applyingRemoteRef = useRef(false);
+  const stateRef = useRef<AppState>({ tdn, quaseFalha, metaQuaseFalha });
+  stateRef.current = { tdn, quaseFalha, metaQuaseFalha };
+
+  const cloudAvailable = true;
 
   function generateId() {
     try {
       if (typeof crypto !== "undefined" && typeof (crypto as any).randomUUID === "function") {
         return (crypto as any).randomUUID();
       }
-      if (typeof crypto !== "undefined" && typeof (crypto as any).getRandomValues === "function") {
-        const arr = new Uint8Array(16);
-        (crypto as any).getRandomValues(arr);
-        arr[6] = (arr[6] & 0x0f) | 0x40;
-        arr[8] = (arr[8] & 0x3f) | 0x80;
-        const hex = Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
-        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-      }
-    } catch (e) {
-      // ignore and fallback
+    } catch {
+      /* fallback abaixo */
     }
     return "id_" + Math.random().toString(36).slice(2, 10);
   }
 
+  const applyState = (s: Partial<AppState> | null | undefined) => {
+    if (!s) return;
+    applyingRemoteRef.current = true;
+    setTdn(Array.isArray(s.tdn) ? s.tdn : []);
+    setQuaseFalha(Array.isArray(s.quaseFalha) ? s.quaseFalha : []);
+    setMetaQuaseFalha(typeof s.metaQuaseFalha === "number" ? s.metaQuaseFalha : 0.65);
+  };
+
+  // Carrega da nuvem (com cache local como fallback offline)
   useEffect(() => {
-    const localData = localStorage.getItem("chn-dashboard-data");
-    if (localData) {
-      try {
-        const parsed = JSON.parse(localData);
-        if (parsed.tdn) setTdn(parsed.tdn);
-        if (parsed.quaseFalha) setQuaseFalha(parsed.quaseFalha);
-        if (parsed.metaQuaseFalha) setMetaQuaseFalha(parsed.metaQuaseFalha);
-      } catch (e) {
-        console.error("Erro ao ler localStorage", e);
+    let cancelled = false;
+
+    (async () => {
+      const cached = typeof window !== "undefined" ? localStorage.getItem(LOCAL_KEY) : null;
+      if (cached) {
+        try {
+          applyState(JSON.parse(cached));
+        } catch {
+          /* ignora cache inválido */
+        }
       }
-    }
+
+      const { data, error } = await supabase
+        .from("dashboard_state")
+        .select("state, updated_at")
+        .eq("id", SHARED_ID)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error(error);
+        setSyncStatus("Erro ao carregar");
+      } else if (data) {
+        applyState(data.state as unknown as AppState);
+        setCloudUpdatedAt(new Date(data.updated_at).toLocaleString("pt-BR"));
+        setSyncStatus("Sincronizado");
+      } else {
+        setSyncStatus("Sincronizado");
+      }
+
+      loadedRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // Atualizações em tempo real de outros usuários
   useEffect(() => {
-    const payload = { tdn, quaseFalha, metaQuaseFalha };
-    localStorage.setItem("chn-dashboard-data", JSON.stringify(payload));
-    try { console.debug("Saved dashboard to localStorage", payload); } catch (e) { console.debug("localStorage save failed", e); }
+    const channel = supabase
+      .channel("dashboard_state_sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dashboard_state", filter: `id=eq.${SHARED_ID}` },
+        (payload) => {
+          const row = payload.new as { state?: AppState; updated_at?: string } | null;
+          if (!row?.state) return;
+          applyState(row.state);
+          if (row.updated_at) setCloudUpdatedAt(new Date(row.updated_at).toLocaleString("pt-BR"));
+          setSyncStatus("Sincronizado");
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Salva automaticamente (local + nuvem, com debounce)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify({ tdn, quaseFalha, metaQuaseFalha }));
+    }
+
+    if (!loadedRef.current) return;
+    if (applyingRemoteRef.current) {
+      applyingRemoteRef.current = false;
+      return;
+    }
+
+    setSyncStatus("Salvando...");
+    const timer = setTimeout(() => {
+      void persist();
+    }, 700);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tdn, quaseFalha, metaQuaseFalha]);
 
+  const persist = async () => {
+    const updatedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from("dashboard_state")
+      .upsert({ id: SHARED_ID, state: stateRef.current as any, updated_at: updatedAt }, { onConflict: "id" });
+
+    if (error) {
+      console.error(error);
+      setSyncStatus("Erro ao sincronizar");
+      throw error;
+    }
+    setSyncStatus("Sincronizado");
+    setCloudUpdatedAt(new Date(updatedAt).toLocaleString("pt-BR"));
+  };
+
   const reset = () => {
+    applyingRemoteRef.current = false;
     setTdn([]);
     setQuaseFalha([]);
-    setMetaQuaseFalha(0.8);
-    localStorage.removeItem("chn-dashboard-data");
+    setMetaQuaseFalha(0.65);
   };
 
   const addTDN = (record: Omit<TDNRecord, "id">) => {
     const newRecord = { ...record, id: generateId() };
-    console.debug("addTDN called", newRecord);
     setTdn((prev) => [newRecord, ...prev]);
   };
 
@@ -132,48 +214,34 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   };
 
   const importJSON = (s: AppState) => {
+    applyingRemoteRef.current = false;
     setTdn(s.tdn ?? []);
     setQuaseFalha(s.quaseFalha ?? []);
-    setMetaQuaseFalha(s.metaQuaseFalha ?? 0.8);
+    setMetaQuaseFalha(s.metaQuaseFalha ?? 0.65);
   };
 
-  // Supabase operations
   const saveToCloud = async () => {
-    if (!supabase) return;
     setSyncStatus("Salvando...");
-    try {
-      // Upsert a single row with key 'shared' containing whole state
-      const payload = { id: "shared", state: { tdn, quaseFalha, metaQuaseFalha }, updated_at: new Date().toISOString() };
-      const { error } = await supabase.from("dashboard_state").upsert(payload, { onConflict: "id" });
-      if (error) throw error;
-      setSyncStatus("Sincronizado");
-      setCloudUpdatedAt(new Date().toLocaleString());
-    } catch (err) {
-      console.error(err);
-      setSyncStatus("Erro ao sincronizar");
-      throw err;
-    }
+    await persist();
   };
 
   const loadFromCloud = async () => {
-    if (!supabase) return;
     setSyncStatus("Carregando...");
-    try {
-      const { data, error } = await supabase.from("dashboard_state").select("state, updated_at").eq("id", "shared").single();
-      if (error) {
-        setSyncStatus("Erro ao carregar");
-        throw error;
-      }
-      if (data?.state) {
-        importJSON(data.state as AppState);
-        setCloudUpdatedAt(data.updated_at ?? new Date().toLocaleString());
-        setSyncStatus("Sincronizado");
-      }
-    } catch (err) {
-      console.error(err);
+    const { data, error } = await supabase
+      .from("dashboard_state")
+      .select("state, updated_at")
+      .eq("id", SHARED_ID)
+      .maybeSingle();
+
+    if (error) {
       setSyncStatus("Erro ao carregar");
-      throw err;
+      throw error;
     }
+    if (data?.state) {
+      applyState(data.state as unknown as AppState);
+      setCloudUpdatedAt(new Date(data.updated_at).toLocaleString("pt-BR"));
+    }
+    setSyncStatus("Sincronizado");
   };
 
   const value: Ctx = {
